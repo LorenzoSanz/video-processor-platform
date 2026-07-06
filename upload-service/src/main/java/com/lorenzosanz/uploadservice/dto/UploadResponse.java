@@ -5,6 +5,9 @@ public class UploadResponse {
   private String status;
   private String uploadId;
 
+  public UploadResponse() {
+  }
+
   public UploadResponse(String status, String uploadId) {
     this.status = status;
     this.uploadId = uploadId;
