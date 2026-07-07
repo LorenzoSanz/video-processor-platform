@@ -3,6 +3,8 @@ package com.lorenzosanz.uploadservice.entity;
 import java.time.LocalDate;
 import java.util.UUID;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
@@ -14,23 +16,23 @@ public class Upload {
   private UUID uploadId;
 
   private String fileName;
+
+  @Enumerated(EnumType.STRING)
   private UploadStatus status;
   private String contentType;
   private long size;
   private LocalDate date;
-  private String user;
 
   public Upload() {
   }
 
-  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size, String user,
+  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size,
       LocalDate date) {
     this.uploadId = uploadId;
     this.fileName = fileName;
     this.status = status;
     this.contentType = contentType;
     this.size = size;
-    this.user = user;
     this.date = date;
   }
 
@@ -52,10 +54,6 @@ public class Upload {
 
   public long getSize() {
     return size;
-  }
-
-  public String getUser() {
-    return user;
   }
 
   public LocalDate getDate() {
@@ -80,10 +78,6 @@ public class Upload {
 
   public void setSize(long size) {
     this.size = size;
-  }
-
-  public void setUser(String user) {
-    this.user = user;
   }
 
   public void setDate(LocalDate date) {

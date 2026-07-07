@@ -24,7 +24,7 @@ public class UploadService {
 
     Upload upload = new Upload(UUID.randomUUID(), uploadRequest.getFileName(), UploadStatus.PENDING,
         uploadRequest.getContentType(),
-        0, null, LocalDate.now());
+        0, LocalDate.now());
 
     Upload savedUpload = uploadRepository.save(upload);
 
