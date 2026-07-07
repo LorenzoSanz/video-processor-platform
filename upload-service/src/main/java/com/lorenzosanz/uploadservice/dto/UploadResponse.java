@@ -1,23 +1,27 @@
 package com.lorenzosanz.uploadservice.dto;
 
+import java.util.UUID;
+
+import com.lorenzosanz.uploadservice.enums.UploadStatus;
+
 public class UploadResponse {
 
-  private String status;
-  private String uploadId;
+  private UploadStatus status;
+  private UUID uploadId;
 
   public UploadResponse() {
   }
 
-  public UploadResponse(String status, String uploadId) {
+  public UploadResponse(UploadStatus status, UUID uploadId) {
     this.status = status;
     this.uploadId = uploadId;
   }
 
-  public String getStatus() {
+  public UploadStatus getStatus() {
     return status;
   }
 
-  public String getUploadId() {
+  public UUID getUploadId() {
     return uploadId;
   }
 }

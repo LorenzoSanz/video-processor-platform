@@ -1,5 +1,11 @@
 package com.lorenzosanz.uploadservice.repository;
 
-public interface UploadRepository {
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.lorenzosanz.uploadservice.entity.Upload;
+
+public interface UploadRepository extends JpaRepository<Upload, UUID> {
 
 }

@@ -1,8 +1,9 @@
 package com.lorenzosanz.uploadservice.entity;
 
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.UUID;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 
@@ -11,19 +12,21 @@ public class Upload {
 
   @Id
   private UUID uploadId;
+
+  private String fileName;
   private UploadStatus status;
   private String contentType;
-  private float size;
-
-  @Foreign Key
-  private String user;
+  private long size;
   private LocalDate date;
+  private String user;
 
   public Upload() {
   }
 
-  public Upload(UUID uploadId, UploadStatus status, String contentType, float size, String user, LocalDate date) {
+  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size, String user,
+      LocalDate date) {
     this.uploadId = uploadId;
+    this.fileName = fileName;
     this.status = status;
     this.contentType = contentType;
     this.size = size;
@@ -35,6 +38,10 @@ public class Upload {
     return uploadId;
   }
 
+  public String getFileName() {
+    return fileName;
+  }
+
   public UploadStatus getStatus() {
     return status;
   }
@@ -43,7 +50,7 @@ public class Upload {
     return contentType;
   }
 
-  public float getSize() {
+  public long getSize() {
     return size;
   }
 
@@ -59,6 +66,10 @@ public class Upload {
     this.uploadId = uploadId;
   }
 
+  public void setFileName(String fileName) {
+    this.fileName = fileName;
+  }
+
   public void setStatus(UploadStatus status) {
     this.status = status;
   }
@@ -67,7 +78,7 @@ public class Upload {
     this.contentType = contentType;
   }
 
-  public void setSize(float size) {
+  public void setSize(long size) {
     this.size = size;
   }
 
