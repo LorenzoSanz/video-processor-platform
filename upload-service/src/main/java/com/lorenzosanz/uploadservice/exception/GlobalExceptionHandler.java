@@ -17,6 +17,6 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(exception = MethodArgumentNotValidException.class)
   public ErrorResponse badRequestException(MethodArgumentNotValidException ex) {
     return new ErrorResponse(400, "Invalid Request", LocalDateTime.now());
-    ;
+
   }
 }
