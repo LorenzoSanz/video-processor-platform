@@ -1,8 +1,13 @@
 package com.lorenzosanz.uploadservice.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class UploadRequest {
 
+  @NotBlank(message = "File name is required.")
   private String fileName;
+
+  @NotBlank(message = "Content Type is required.")
   private String contentType;
 
   public UploadRequest() {

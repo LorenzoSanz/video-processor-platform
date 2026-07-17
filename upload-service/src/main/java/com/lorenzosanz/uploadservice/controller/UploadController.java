@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.lorenzosanz.uploadservice.dto.UploadRequest;
 import com.lorenzosanz.uploadservice.service.UploadService;
+
+import jakarta.validation.Valid;
+
 import com.lorenzosanz.uploadservice.dto.UploadResponse;
 
 @RestController
@@ -20,7 +23,7 @@ public class UploadController {
   }
 
   @PostMapping
-  public UploadResponse postUpload(@RequestBody UploadRequest uploadRequest) {
+  public UploadResponse postUpload(@Valid @RequestBody UploadRequest uploadRequest) {
     return uploadService.startUpload(uploadRequest);
   }
 }
