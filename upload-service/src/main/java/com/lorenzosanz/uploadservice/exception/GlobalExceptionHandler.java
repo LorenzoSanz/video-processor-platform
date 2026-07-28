@@ -13,10 +13,10 @@ import com.lorenzosanz.uploadservice.dto.ErrorResponse;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler(exception = MethodArgumentNotValidException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
   public ErrorResponse badRequestException(MethodArgumentNotValidException ex) {
-    return new ErrorResponse(400, "Invalid Request", LocalDateTime.now());
+    return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Invalid Request", LocalDateTime.now());
 
   }
 }
