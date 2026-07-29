@@ -16,6 +16,7 @@ public class Upload {
   private UUID uploadId;
 
   private String fileName;
+  private String storagePath;
 
   @Enumerated(EnumType.STRING)
   private UploadStatus status;
@@ -26,10 +27,11 @@ public class Upload {
   public Upload() {
   }
 
-  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size,
+  public Upload(UUID uploadId, String fileName, String storagePath, UploadStatus status, String contentType, long size,
       LocalDate date) {
     this.uploadId = uploadId;
     this.fileName = fileName;
+    this.storagePath = storagePath;
     this.status = status;
     this.contentType = contentType;
     this.size = size;
@@ -42,6 +44,10 @@ public class Upload {
 
   public String getFileName() {
     return fileName;
+  }
+
+  public String getStoragePath() {
+    return storagePath;
   }
 
   public UploadStatus getStatus() {
@@ -82,5 +88,9 @@ public class Upload {
 
   public void setDate(LocalDate date) {
     this.date = date;
+  }
+
+  public void setStoragePath(String storagePath) {
+    this.storagePath = storagePath;
   }
 }
