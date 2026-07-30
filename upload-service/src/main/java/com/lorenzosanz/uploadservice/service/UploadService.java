@@ -26,10 +26,18 @@ public class UploadService {
 
   public UploadResponse startUpload(MultipartFile file, UploadRequest uploadRequest) {
     String fileName = file.getOriginalFilename();
-    String contentType = file.getContentType();
+    String contentType = file.getContentType(); 
+    String extension = fileName.substring(fileName.lastIndexOf("."));
     long size = file.getSize();
+    LocalDate uploadDate = LocalDate.now();
+    int year = uploadDate.getYear();
+    int month = uploadDate.getMonthValue();
+    UUID uploadId = UUID.randomUUID();
+    String storagePath = "uploads/" + year + "/" + month + "/" + uploadId + extension;
 
-    Upload upload = new Upload(UUID.randomUUID(), fileName, UploadStatus.PENDING, contentType, size, LocalDate.now());
+    storageService.storeFile(storagePath, file.getBytes());
+
+    Upload upload = new Upload(uploadId, fileName, UploadStatus.PENDING, contentType, size, uploadDate, storagePath);
 
     Upload savedUpload = uploadRepository.save(upload);
 

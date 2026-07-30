@@ -2,7 +2,7 @@ package com.lorenzosanz.uploadservice.storage;
 
 public interface StorageService {
 
-  void storeFile(String path, byte[] fileData);
+  String storeFile(String storagePath, byte[] data);
 
-  void removeFile(String path);
+  void deleteFile(String storagePath);
 }

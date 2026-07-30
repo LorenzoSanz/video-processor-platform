@@ -1,8 +1,12 @@
 package com.lorenzosanz.uploadservice.storage;
 
-import org.springframework.stereotype.Service;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.io.IOException;
+
+import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class LocalStorageService implements StorageService {
@@ -10,14 +14,17 @@ public class LocalStorageService implements StorageService {
   @Value("${storage.root-path}")
   private String rootPath;
 
-  public void storeFile(String path, byte[] fileData) {
+  private Path finalPath = Path.of(rootPath, storagePath);
+
+  @Override
+  public void storeFile(String storagePath, byte[] data) {
     // Implementation for storing file locally
-    Upload upload = new Upload();
-    rootPath = upload.getUploadId().toString();
+
     
   }
 
-  public void removeFile(String path) {
+  @Override
+  public void deleteFile(String storagePath) {
     // Implementation for removing file locally
   }
 }
