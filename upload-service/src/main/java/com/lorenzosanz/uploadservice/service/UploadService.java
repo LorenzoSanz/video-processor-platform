@@ -6,7 +6,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.lorenzosanz.uploadservice.dto.UploadRequest;
 import com.lorenzosanz.uploadservice.dto.UploadResponse;
 import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.repository.UploadRepository;
@@ -24,20 +23,22 @@ public class UploadService {
     this.storageService = StorageService;
   }
 
-  public UploadResponse startUpload(MultipartFile file, UploadRequest uploadRequest) {
+  public UploadResponse startUpload(MultipartFile file) {
+    UUID uploadId = UUID.randomUUID();
     String fileName = file.getOriginalFilename();
-    String contentType = file.getContentType(); 
-    String extension = fileName.substring(fileName.lastIndexOf("."));
+    String contentType = file.getContentType();
     long size = file.getSize();
     LocalDate uploadDate = LocalDate.now();
-    int year = uploadDate.getYear();
-    int month = uploadDate.getMonthValue();
-    UUID uploadId = UUID.randomUUID();
-    String storagePath = "uploads/" + year + "/" + month + "/" + uploadId + extension;
 
-    storageService.storeFile(storagePath, file.getBytes());
+     Upload upload = new Upload(
+      uploadId, 
+      fileName, 
+      UploadStatus.PENDING, 
+      contentType, 
+      size, 
+      uploadDate);
 
-    Upload upload = new Upload(uploadId, fileName, UploadStatus.PENDING, contentType, size, uploadDate, storagePath);
+    storageService.storeFile(upload, file);
 
     Upload savedUpload = uploadRepository.save(upload);
 

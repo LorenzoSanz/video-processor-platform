@@ -1,17 +1,13 @@
 package com.lorenzosanz.uploadservice.controller;
 
-import org.springframework.web.bind.annotation.ModelAttribute;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.lorenzosanz.uploadservice.dto.UploadRequest;
 import com.lorenzosanz.uploadservice.service.UploadService;
-
-import jakarta.validation.Valid;
-
 import com.lorenzosanz.uploadservice.dto.UploadResponse;
 
 @RestController
@@ -25,10 +21,8 @@ public class UploadController {
   }
 
   @PostMapping
-  public UploadResponse postUpload(
-      @RequestParam("file") MultipartFile file,
-      @Valid @ModelAttribute UploadRequest uploadRequest) {
+  public UploadResponse postUpload(@RequestParam("file") MultipartFile file) {
 
-    return uploadService.startUpload(file, uploadRequest);
+    return uploadService.startUpload(file);
   }
 }

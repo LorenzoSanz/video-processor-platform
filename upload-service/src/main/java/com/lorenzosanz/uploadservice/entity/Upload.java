@@ -27,11 +27,10 @@ public class Upload {
   public Upload() {
   }
 
-  public Upload(UUID uploadId, String fileName, String storagePath, UploadStatus status, String contentType, long size,
+  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size,
       LocalDate date) {
     this.uploadId = uploadId;
     this.fileName = fileName;
-    this.storagePath = storagePath;
     this.status = status;
     this.contentType = contentType;
     this.size = size;
