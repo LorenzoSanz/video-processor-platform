@@ -18,3 +18,4 @@ spring:
 
 storage:
   root-path: C:/uploads
+  max-file-size: 104857600
