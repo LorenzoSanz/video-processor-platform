@@ -10,6 +10,7 @@ import com.lorenzosanz.uploadservice.dto.UploadResponse;
 import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.repository.UploadRepository;
 import com.lorenzosanz.uploadservice.storage.StorageService;
+import com.lorenzosanz.uploadservice.validation.FileSignatureValidator;
 import com.lorenzosanz.uploadservice.validation.FileValidator;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 
@@ -19,11 +20,13 @@ public class UploadService {
   private final UploadRepository uploadRepository;
   private final StorageService storageService;
   private final FileValidator fileValidator;
+  private final FileSignatureValidator fileSignatureValidator;
 
-  public UploadService(UploadRepository uploadRepository, StorageService storageService, FileValidator fileValidator) {
+  public UploadService(UploadRepository uploadRepository, StorageService storageService, FileValidator fileValidator, FileSignatureValidator fileSignatureValidator) {
     this.uploadRepository = uploadRepository;
     this.storageService = storageService;
     this.fileValidator = fileValidator;
+    this.fileSignatureValidator = fileSignatureValidator;
   }
 
   public UploadResponse startUpload(MultipartFile file) {
@@ -34,6 +37,7 @@ public class UploadService {
     LocalDate uploadDate = LocalDate.now();
 
     fileValidator.validate(file);
+    fileSignatureValidator.validate(file);
 
      Upload upload = new Upload(
       uploadId, 
