@@ -2,6 +2,7 @@ package com.lorenzosanz.uploadservice.validation;
 
 import com.lorenzosanz.uploadservice.config.StorageProperties;
 import com.lorenzosanz.uploadservice.exception.FileValidationException;
+import com.lorenzosanz.uploadservice.validation.constants.AllowedContentTypes;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +24,10 @@ public class FileValidator {
 
     if (file.getSize() > storageProperties.getMaxFileSize()) {
       throw new FileValidationException("File is too big.");
+    }
+
+    if (!AllowedContentTypes.VALUES.contains(file.getContentType())) {
+      throw new FileValidationException("File content type is not allowed.");
     }
   }
 }
