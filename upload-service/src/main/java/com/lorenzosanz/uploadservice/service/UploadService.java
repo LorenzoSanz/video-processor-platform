@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.lorenzosanz.uploadservice.dto.UploadResponse;
@@ -29,6 +30,7 @@ public class UploadService {
     this.fileSignatureValidator = fileSignatureValidator;
   }
 
+  @Transactional
   public UploadResponse startUpload(MultipartFile file) {
     UUID uploadId = UUID.randomUUID();
     String fileName = file.getOriginalFilename();
@@ -38,19 +40,24 @@ public class UploadService {
 
     fileValidator.validate(file);
     fileSignatureValidator.validate(file);
-
-     Upload upload = new Upload(
+    
+    Upload upload = new Upload(
       uploadId, 
       fileName, 
       UploadStatus.PENDING, 
       contentType, 
       size, 
       uploadDate);
-    
+
     storageService.storeFile(upload, file);
 
-    Upload savedUpload = uploadRepository.save(upload);
-
-    return new UploadResponse(UploadStatus.PENDING, savedUpload.getUploadId());
+    try {
+      Upload savedUpload = uploadRepository.save(upload);
+      return new UploadResponse(UploadStatus.PENDING, savedUpload.getUploadId());
+      
+    } catch (RuntimeException e) {
+        storageService.deleteFile(upload.getStoragePath());
+        throw e;
+      }
   }
 }
