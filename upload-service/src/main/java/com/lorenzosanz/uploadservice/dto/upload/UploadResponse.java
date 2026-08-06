@@ -1,4 +1,4 @@
-package com.lorenzosanz.uploadservice.dto;
+package com.lorenzosanz.uploadservice.dto.upload;
 
 import java.util.UUID;
 

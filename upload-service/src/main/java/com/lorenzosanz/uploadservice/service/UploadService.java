@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.lorenzosanz.uploadservice.dto.UploadResponse;
+import com.lorenzosanz.uploadservice.dto.upload.UploadResponse;
 import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.repository.UploadRepository;
 import com.lorenzosanz.uploadservice.storage.StorageService;
