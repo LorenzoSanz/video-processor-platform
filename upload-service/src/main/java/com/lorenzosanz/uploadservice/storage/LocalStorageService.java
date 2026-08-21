@@ -3,7 +3,7 @@ package com.lorenzosanz.uploadservice.storage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.IOException;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,7 +23,7 @@ public class LocalStorageService implements StorageService {
   }
 
   private String buildStoragePath(Upload upload) {
-    final LocalDate date = upload.getDate();
+    final LocalDateTime date = upload.getCreatedAt();
     final int year = date.getYear();
     final String month = String.format("%02d", date.getMonthValue());
 

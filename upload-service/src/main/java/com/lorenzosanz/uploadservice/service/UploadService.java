@@ -1,6 +1,6 @@
 package com.lorenzosanz.uploadservice.service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ public class UploadService {
     String fileName = file.getOriginalFilename();
     String contentType = file.getContentType();
     long size = file.getSize();
-    LocalDate uploadDate = LocalDate.now();
+    LocalDateTime uploadDate = LocalDateTime.now();
 
     logger.info("Upload started: filename={}", fileName);
 

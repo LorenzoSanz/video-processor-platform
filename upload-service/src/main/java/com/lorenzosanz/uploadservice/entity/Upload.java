@@ -1,6 +1,6 @@
 package com.lorenzosanz.uploadservice.entity;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,19 +22,19 @@ public class Upload {
   private UploadStatus status;
   private String contentType;
   private long size;
-  private LocalDate date;
+  private LocalDateTime createdAt;
 
   public Upload() {
   }
 
   public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size,
-      LocalDate date) {
+    LocalDateTime createdAt) {
     this.uploadId = uploadId;
     this.fileName = fileName;
     this.status = status;
     this.contentType = contentType;
     this.size = size;
-    this.date = date;
+    this.createdAt = createdAt;
   }
 
   public UUID getUploadId() {
@@ -61,8 +61,8 @@ public class Upload {
     return size;
   }
 
-  public LocalDate getDate() {
-    return date;
+  public LocalDateTime getCreatedAt() {
+    return createdAt;
   }
 
   public void setUploadId(UUID uploadId) {
@@ -85,8 +85,8 @@ public class Upload {
     this.size = size;
   }
 
-  public void setDate(LocalDate date) {
-    this.date = date;
+  public void setCreatedAt(LocalDateTime createdAt) {
+    this.createdAt = createdAt;
   }
 
   public void setStoragePath(String storagePath) {
