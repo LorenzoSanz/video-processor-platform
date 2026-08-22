@@ -2,10 +2,16 @@ package com.lorenzosanz.uploadservice.entity;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 
@@ -13,15 +19,33 @@ import com.lorenzosanz.uploadservice.enums.UploadStatus;
 public class Upload {
 
   @Id
+  @NotNull
+  @Column(nullable = false)
   private UUID uploadId;
-
+  
+  @NotBlank
+  @Size(max = 255)
+  @Column(nullable = false, length = 255)
   private String fileName;
+  
   private String storagePath;
-
+  
   @Enumerated(EnumType.STRING)
+  @NotNull
+  @Column(nullable = false)
   private UploadStatus status;
+  
+  @NotBlank
+  @Size(max = 255)
+  @Column(nullable = false, length = 255)
   private String contentType;
+  
+  @Positive
+  @Column(nullable = false)
   private long size;
+  
+  @NotNull
+  @Column(nullable = false)
   private LocalDateTime createdAt;
 
   public Upload() {
