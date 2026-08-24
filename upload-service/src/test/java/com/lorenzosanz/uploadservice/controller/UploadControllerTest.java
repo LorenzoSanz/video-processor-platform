@@ -28,8 +28,8 @@ import com.lorenzosanz.uploadservice.exception.GlobalExceptionHandler;
 import com.lorenzosanz.uploadservice.service.UploadService;
 
 @ExtendWith(MockitoExtension.class)
-public class UploadControllerTest {
-
+class UploadControllerTest {
+  
   private MockMvc mockMvc;
 
   private MockMultipartFile file;

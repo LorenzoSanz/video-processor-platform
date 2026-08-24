@@ -15,7 +15,7 @@ import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 
 @DataJpaTest
-public class UploadRepositoryTest {
+class UploadRepositoryTest {
   
   @Autowired
   private UploadRepository uploadRepository;
