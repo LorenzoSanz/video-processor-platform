@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -39,13 +41,16 @@ class LocalStorageServiceTest {
 
         UUID uploadId = UUID.randomUUID();
 
+        LocalDateTime ldt = LocalDateTime.of(2026, 8, 24, 13, 0);
+        Instant instant = ldt.toInstant(ZoneOffset.UTC);
+
         Upload upload = new Upload(
             uploadId,
             "test.png",
             UploadStatus.PENDING,
             "image/png",
             8L,
-            LocalDateTime.of(2026, 8, 24, 13, 0)
+            instant // Pasamos directamente la variable ya procesada
         );
 
         byte[] content = new byte[] {
@@ -75,13 +80,16 @@ class LocalStorageServiceTest {
 
         UUID uploadId = UUID.randomUUID();
 
+        // Si tu clase Upload usa Instant, aquí también debes cambiar LocalDateTime por Instant
+        Instant instant = LocalDateTime.of(2026, 8, 24, 13, 0).toInstant(ZoneOffset.UTC);
+
         Upload upload = new Upload(
             uploadId,
             "test.png",
             UploadStatus.PENDING,
             "image/png",
             8L,
-            LocalDateTime.of(2026, 8, 24, 13, 0)
+            instant
         );
 
         byte[] content = new byte[] {
@@ -109,13 +117,15 @@ class LocalStorageServiceTest {
 
         UUID uploadId = UUID.randomUUID();
 
+        Instant instant = LocalDateTime.of(2026, 8, 24, 13, 0).toInstant(ZoneOffset.UTC);
+
         Upload upload = new Upload(
             uploadId,
             "test.png",
             UploadStatus.PENDING,
             "image/png",
             8L,
-            LocalDateTime.of(2026, 8, 24, 13, 0)
+            instant
         );
 
         byte[] content = new byte[] {
@@ -144,13 +154,16 @@ class LocalStorageServiceTest {
     @Test
     void shouldCreateDirectoriesWhenStoringFile() {
 
+        // Ajustado a Instant
+        Instant instant = LocalDateTime.of(2026, 8, 24, 13, 0).toInstant(ZoneOffset.UTC);
+
         Upload upload = new Upload(
             UUID.randomUUID(),
             "test.png",
             UploadStatus.PENDING,
             "image/png",
             8L,
-            LocalDateTime.of(2026, 8, 24, 13, 0)
+            instant
         );
 
         byte[] content = new byte[] {

@@ -10,7 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -65,7 +65,7 @@ class UploadServiceTest {
     UploadStatus.PENDING, 
     file.getContentType(), 
     file.getSize(),
-    LocalDateTime.now()
+    Instant.now()
     );
 
     when(uploadRepository.save(any(Upload.class))).thenReturn(savedUpload);

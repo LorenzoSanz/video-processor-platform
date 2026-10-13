@@ -3,7 +3,7 @@ package com.lorenzosanz.uploadservice.entity;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,7 +35,7 @@ class UploadValidationTest {
             UploadStatus.PENDING,
             "video/mp4",
             1000L,
-            LocalDateTime.now()
+            Instant.now()
         );
 
         Set<ConstraintViolation<Upload>> violations =
@@ -52,7 +52,7 @@ class UploadValidationTest {
             UploadStatus.PENDING,
             "video/mp4",
             -100L,
-            LocalDateTime.now()
+            Instant.now()
         );
 
         Set<ConstraintViolation<Upload>> violations =
@@ -70,7 +70,7 @@ class UploadValidationTest {
         UploadStatus.PENDING,
         "video/mp4",
         0L,
-        LocalDateTime.now()
+        Instant.now()
     );
 
     Set<ConstraintViolation<Upload>> violations =
@@ -87,7 +87,7 @@ class UploadValidationTest {
             UploadStatus.PENDING,
             "video/mp4",
             1000L,
-            LocalDateTime.now()
+            Instant.now()
         );
 
         Set<ConstraintViolation<Upload>> violations =
@@ -106,7 +106,7 @@ class UploadValidationTest {
             UploadStatus.PENDING,
             "video/mp4",
             1000L,
-            LocalDateTime.now()
+            Instant.now()
         );
 
         Set<ConstraintViolation<Upload>> violations =
@@ -123,7 +123,7 @@ class UploadValidationTest {
             null,
             "video/mp4",
             1000L,
-            LocalDateTime.now()
+            Instant.now()
         );
 
         Set<ConstraintViolation<Upload>> violations =
@@ -140,7 +140,7 @@ class UploadValidationTest {
             UploadStatus.PENDING,
             "",
             1000L,
-            LocalDateTime.now()
+            Instant.now()
         );
 
         Set<ConstraintViolation<Upload>> violations =

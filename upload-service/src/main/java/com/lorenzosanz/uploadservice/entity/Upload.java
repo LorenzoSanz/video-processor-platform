@@ -1,6 +1,6 @@
 package com.lorenzosanz.uploadservice.entity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -46,13 +46,12 @@ public class Upload {
   
   @NotNull
   @Column(nullable = false)
-  private LocalDateTime createdAt;
+  private Instant createdAt;
 
   public Upload() {
   }
 
-  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size,
-    LocalDateTime createdAt) {
+  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size, Instant createdAt) {
     this.uploadId = uploadId;
     this.fileName = fileName;
     this.status = status;
@@ -85,7 +84,7 @@ public class Upload {
     return size;
   }
 
-  public LocalDateTime getCreatedAt() {
+  public Instant getCreatedAt() {
     return createdAt;
   }
 
@@ -109,7 +108,7 @@ public class Upload {
     this.size = size;
   }
 
-  public void setCreatedAt(LocalDateTime createdAt) {
+  public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
   }
 

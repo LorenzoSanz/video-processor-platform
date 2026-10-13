@@ -1,6 +1,6 @@
 package com.lorenzosanz.uploadservice.repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,17 +14,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 @DataJpaTest
 class UploadRepositoryTest {
   
   @Autowired
   private UploadRepository uploadRepository;
 
+  @PersistenceContext
+  private EntityManager entityManager;
+
   @Test
   void shouldHaveUpload(){
-    Upload upload = new Upload(UUID.randomUUID(), "test", UploadStatus.PENDING , null, 0, LocalDateTime.now());
+    Upload upload = new Upload(UUID.randomUUID(), "test.mp4", UploadStatus.PENDING ,"video/mp4", 1000L, Instant.now());
 
-    uploadRepository.save(upload);
+    uploadRepository.saveAndFlush(upload);
+
+    entityManager.clear();
+
     Optional<Upload> result = uploadRepository.findById(upload.getUploadId());
 
     assertTrue(result.isPresent());
@@ -32,10 +41,16 @@ class UploadRepositoryTest {
 
   @Test 
   void shouldMaintainDataIntegrity() {
-    Upload upload = new Upload(UUID.randomUUID(), "test", UploadStatus.PENDING , "mp4", 10000L, LocalDateTime.now());
+    Upload upload = new Upload(UUID.randomUUID(), "test.mp4", UploadStatus.PENDING , "video/mp4", 10000L, Instant.now());
 
-    uploadRepository.save(upload);
+    uploadRepository.saveAndFlush(upload);
+
+    entityManager.clear();
+
     Optional<Upload> result = uploadRepository.findById(upload.getUploadId());
+
+    assertTrue(result.isPresent());
+
     Upload savedUpload = result.get();
    
     assertEquals(upload.getFileName(), savedUpload.getFileName());
