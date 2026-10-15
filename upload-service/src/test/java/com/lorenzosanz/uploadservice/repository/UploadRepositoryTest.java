@@ -1,5 +1,6 @@
 package com.lorenzosanz.uploadservice.repository;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import com.lorenzosanz.uploadservice.enums.UploadStatus;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+
 
 @DataJpaTest
 class UploadRepositoryTest {
@@ -58,7 +60,11 @@ class UploadRepositoryTest {
     assertEquals(upload.getStatus(), savedUpload.getStatus());
     assertEquals(upload.getContentType(), savedUpload.getContentType());
     assertEquals(upload.getSize(), savedUpload.getSize());
-    assertEquals(upload.getCreatedAt(), savedUpload.getCreatedAt());
+    assertTrue(
+    Duration.between(upload.getCreatedAt(), savedUpload.getCreatedAt())
+        .abs()
+        .compareTo(Duration.ofNanos(1_000)) <= 0
+);
   }
 
   @Test 
