@@ -1,0 +1,65 @@
+package com.lorenzosanz.uploadservice.service;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import com.lorenzosanz.uploadservice.entity.OutboxEvent;
+import com.lorenzosanz.uploadservice.entity.Upload;
+import com.lorenzosanz.uploadservice.enums.UploadStatus;
+import com.lorenzosanz.uploadservice.repository.OutboxEventRepository;
+import com.lorenzosanz.uploadservice.repository.UploadRepository;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+
+@SpringBootTest
+class UploadPersistenceServiceTransactionTest {
+
+    @Autowired
+    private UploadPersistenceService uploadPersistenceService;
+
+    @Autowired
+    private UploadRepository uploadRepository;
+
+    @MockitoBean
+    private OutboxEventRepository outboxEventRepository;
+
+    @Test
+    void shouldRollbackUploadWhenOutboxPersistenceFails() {
+        UUID uploadId = UUID.randomUUID();
+
+        Upload upload = new Upload(
+                uploadId,
+                "test-video.mp4",
+                UploadStatus.PENDING,
+                "video/mp4",
+                1024L,
+                Instant.now()
+        );
+
+       doAnswer(invocation -> {
+
+    uploadRepository.flush();
+
+    assertTrue(uploadRepository.existsById(uploadId));
+
+    throw new IllegalStateException("Simulated Outbox failure");
+
+}).when(outboxEventRepository).save(any(OutboxEvent.class));
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> uploadPersistenceService.persistUploadAndOutbox(upload)
+        );
+
+        assertFalse(uploadRepository.existsById(uploadId));
+    }
+}
