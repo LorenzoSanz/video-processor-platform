@@ -6,12 +6,10 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.lorenzosanz.uploadservice.dto.upload.UploadResponse;
 import com.lorenzosanz.uploadservice.entity.Upload;
-import com.lorenzosanz.uploadservice.repository.UploadRepository;
 import com.lorenzosanz.uploadservice.storage.StorageService;
 import com.lorenzosanz.uploadservice.validation.FileSignatureValidator;
 import com.lorenzosanz.uploadservice.validation.FileValidator;
@@ -20,21 +18,20 @@ import com.lorenzosanz.uploadservice.enums.UploadStatus;
 @Service
 public class UploadService {
 
-  private final UploadRepository uploadRepository;
+  private final UploadPersistenceService uploadPersistenceService;
   private final StorageService storageService;
   private final FileValidator fileValidator;
   private final FileSignatureValidator fileSignatureValidator;
 
   private static final Logger logger = LoggerFactory.getLogger(UploadService.class);
 
-  public UploadService(UploadRepository uploadRepository, StorageService storageService, FileValidator fileValidator, FileSignatureValidator fileSignatureValidator) {
-    this.uploadRepository = uploadRepository;
+  public UploadService(UploadPersistenceService uploadPersistenceService, StorageService storageService, FileValidator fileValidator, FileSignatureValidator fileSignatureValidator) {
+    this.uploadPersistenceService = uploadPersistenceService;
     this.storageService = storageService;
     this.fileValidator = fileValidator;
     this.fileSignatureValidator = fileSignatureValidator;
   }
 
-  @Transactional
   public UploadResponse startUpload(MultipartFile file) {
     UUID uploadId = UUID.randomUUID();
     String fileName = file.getOriginalFilename();
@@ -56,17 +53,34 @@ public class UploadService {
       uploadDate);
 
     storageService.storeFile(upload, file);
-
     try {
-      Upload savedUpload = uploadRepository.save(upload);
+    Upload savedUpload =
+            uploadPersistenceService.persistUploadAndOutbox(upload);
 
-      logger.info("Upload completed: filename={}", fileName);
+    logger.info(
+            "Upload stored and processing event registered: uploadId={}",
+            savedUpload.getUploadId()
+    );
 
-      return new UploadResponse(UploadStatus.PENDING, savedUpload.getUploadId());
-      
-    } catch (RuntimeException e) {
+    return new UploadResponse(
+            UploadStatus.PENDING,
+            savedUpload.getUploadId()
+    );
+
+} catch (RuntimeException persistenceException) {
+    try {
         storageService.deleteFile(upload.getStoragePath());
-        throw e;
-      }
+    } catch (RuntimeException cleanupException) {
+        logger.error(
+                "Failed to delete file after persistence failure: uploadId={}",
+                uploadId,
+                cleanupException
+        );
+
+        persistenceException.addSuppressed(cleanupException);
+    }
+
+    throw persistenceException;
+}
   }
 }

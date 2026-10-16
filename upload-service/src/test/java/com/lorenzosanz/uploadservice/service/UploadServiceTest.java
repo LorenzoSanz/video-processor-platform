@@ -25,7 +25,6 @@ import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 import com.lorenzosanz.uploadservice.exception.FileValidationException;
 import com.lorenzosanz.uploadservice.exception.StorageException;
-import com.lorenzosanz.uploadservice.repository.UploadRepository;
 import com.lorenzosanz.uploadservice.storage.StorageService;
 import com.lorenzosanz.uploadservice.validation.FileSignatureValidator;
 import com.lorenzosanz.uploadservice.validation.FileValidator;
@@ -36,7 +35,7 @@ class UploadServiceTest {
   private MultipartFile file;
   
   @Mock
-  private UploadRepository uploadRepository;
+  private UploadPersistenceService uploadPersistenceService;
   
   @Mock
   private StorageService storageService;
@@ -68,7 +67,7 @@ class UploadServiceTest {
     Instant.now()
     );
 
-    when(uploadRepository.save(any(Upload.class))).thenReturn(savedUpload);
+    when(uploadPersistenceService.persistUploadAndOutbox(any(Upload.class))).thenReturn(savedUpload);
 
     UploadResponse response = uploadService.startUpload(file);
 
@@ -83,16 +82,16 @@ class UploadServiceTest {
       any(Upload.class),
       any(MultipartFile.class)
   );
-    verify(uploadRepository).save(any(Upload.class));
+    verify(uploadPersistenceService).persistUploadAndOutbox(any(Upload.class));
   }
 
   @Test
   void shouldDeleteStoredFileWhenRepositoryFails() {
-    when(uploadRepository.save(any(Upload.class))).thenThrow(new RuntimeException("Database error"));
+    when(uploadPersistenceService.persistUploadAndOutbox(any(Upload.class))).thenThrow(new RuntimeException("Database error"));
 
     assertThrows(RuntimeException.class,() -> uploadService.startUpload(file));
 
-    verify(uploadRepository).save(any(Upload.class));
+    verify(uploadPersistenceService).persistUploadAndOutbox(any(Upload.class));
     verify(storageService).deleteFile(any());
   }
 
@@ -109,7 +108,7 @@ class UploadServiceTest {
       () -> uploadService.startUpload(file)
     );
     
-    verify(uploadRepository, never()).save(any(Upload.class));
+    verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
   }
 
   @Test
@@ -129,7 +128,7 @@ class UploadServiceTest {
 
     verify(storageService, never()).storeFile(any(Upload.class), any(MultipartFile.class));
 
-    verify(uploadRepository, never()).save(any(Upload.class));
+    verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
   }
 
   @Test
@@ -148,6 +147,6 @@ class UploadServiceTest {
 
     verify(storageService, never()).storeFile(any(Upload.class), any(MultipartFile.class));
 
-    verify(uploadRepository, never()).save(any(Upload.class));
+    verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
   }
 }
