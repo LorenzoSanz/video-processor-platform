@@ -56,6 +56,12 @@ public class OutboxEvent {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    @Column(name = "claim_token")
+    private UUID claimToken;
+
+    @Column(name = "claimed_until")
+    private Instant claimedUntil;
+
     public OutboxEvent() {
     }
 
@@ -119,12 +125,22 @@ public class OutboxEvent {
         return lastError;
     }
 
+    public UUID getClaimToken() {
+    return claimToken;
+    }
+
+    public Instant getClaimedUntil() {
+    return claimedUntil;
+    }
+
     public void markPublished(Instant publishedAt) {
         if (this.publishedAt != null) {
             throw new IllegalStateException("Event has already been published");
         }
 
         this.publishedAt = publishedAt;
+        this.claimToken = null;
+        this.claimedUntil = null;
     }
 
     public void registerPublicationFailure(
@@ -139,5 +155,22 @@ public class OutboxEvent {
         this.attempts++;
         this.lastError = errorMessage;
         this.nextAttemptAt = retryAt;
+        this.claimToken = null;
+        this.claimedUntil = null;
+    }
+
+    public void claim(UUID claimToken, Instant claimedUntil) {
+    if (publishedAt != null) {
+        throw new IllegalStateException(
+                "Cannot claim an already published event");
+    }
+
+    if (claimToken == null || claimedUntil == null) {
+        throw new IllegalArgumentException(
+                "Claim token and expiration must not be null");
+    }
+
+    this.claimToken = claimToken;
+    this.claimedUntil = claimedUntil;
     }
 }

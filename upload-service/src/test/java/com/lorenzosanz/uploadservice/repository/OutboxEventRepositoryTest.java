@@ -1,5 +1,6 @@
 package com.lorenzosanz.uploadservice.repository;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -59,5 +60,44 @@ class OutboxEventRepositoryTest {
 
         assertTrue(outboxEventRepository.existsById(
                 saved.getEventId()));
+    }
+
+    @Test
+    void shouldPersistClaimLeaseAndClearItWhenPublished() {
+        UUID uploadId = UUID.randomUUID();
+        UUID claimToken = UUID.randomUUID();
+
+        Instant now = Instant.now();
+        Instant claimedUntil = now.plusSeconds(60);
+        Instant publishedAt = now.plusSeconds(10);
+
+        OutboxEvent event = new OutboxEvent(
+                "UPLOAD",
+                uploadId,
+                "VIDEO_PROCESSING_REQUESTED",
+                "{\"uploadId\":\"" + uploadId + "\"}"
+        );
+
+        event.claim(claimToken, claimedUntil);
+
+        OutboxEvent saved = outboxEventRepository.saveAndFlush(event);
+
+        OutboxEvent retrieved = outboxEventRepository
+                .findById(saved.getEventId())
+                .orElseThrow();
+
+        assertEquals(claimToken, retrieved.getClaimToken());
+        assertEquals(claimedUntil, retrieved.getClaimedUntil());
+
+        retrieved.markPublished(publishedAt);
+        outboxEventRepository.saveAndFlush(retrieved);
+
+        OutboxEvent published = outboxEventRepository
+                .findById(saved.getEventId())
+                .orElseThrow();
+
+        assertEquals(publishedAt, published.getPublishedAt());
+        assertNull(published.getClaimToken());
+        assertNull(published.getClaimedUntil());
     }
 }
