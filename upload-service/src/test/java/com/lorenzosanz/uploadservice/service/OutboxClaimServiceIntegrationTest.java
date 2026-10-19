@@ -68,9 +68,15 @@ class OutboxClaimServiceIntegrationTest {
                     claimed.getClaimToken(),
                     persisted.getClaimToken());
 
-            assertEquals(
-                    claimed.getClaimedUntil(),
-                    persisted.getClaimedUntil());
+           Duration precisionDifference = Duration.between(
+        claimed.getClaimedUntil(),
+        persisted.getClaimedUntil()
+).abs();
+
+assertTrue(
+        precisionDifference.compareTo(Duration.ofNanos(1_000)) <= 0,
+        "The persisted lease must match within PostgreSQL timestamp precision"
+);
 
             List<OutboxEvent> secondClaim =
                     outboxClaimService.claimPendingEvents(
