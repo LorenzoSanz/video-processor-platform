@@ -24,3 +24,20 @@ spring:
 storage:
   root-path: "${STORAGE_ROOT_PATH:C:/uploads}"
   max-file-size: 104857600
+
+messaging:
+  sqs:
+    enabled: ${SQS_ENABLED:false}
+    endpoint: "${SQS_ENDPOINT:}"
+    queue-url: "${SQS_QUEUE_URL:}"
+    region: "${AWS_REGION:eu-west-1}"
+    access-key: "${SQS_ACCESS_KEY:}"
+    secret-key: "${SQS_SECRET_KEY:}"
+
+outbox:
+  publisher:
+    scheduling-enabled: ${OUTBOX_PUBLISHER_SCHEDULING_ENABLED:false}
+    enabled: ${OUTBOX_PUBLISHER_ENABLED:false}
+    batch-size: ${OUTBOX_PUBLISHER_BATCH_SIZE:10}
+    fixed-delay-ms: ${OUTBOX_PUBLISHER_FIXED_DELAY_MS:5000}
+    lease-duration-seconds: ${OUTBOX_PUBLISHER_LEASE_DURATION_SECONDS:30}  

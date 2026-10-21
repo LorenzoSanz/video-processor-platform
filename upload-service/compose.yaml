@@ -30,13 +30,39 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: "${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}"
       STORAGE_ROOT_PATH: /var/lib/upload-service/uploads
+      
+      SQS_ENABLED: "true"
+      SQS_ENDPOINT: "http://elasticmq:9324"
+      SQS_QUEUE_URL: "http://elasticmq:9324/000000000000/video-processing"
+      AWS_REGION: "us-east-1"
+      SQS_ACCESS_KEY: "elasticmq"
+      SQS_SECRET_KEY: "elasticmq"
+
+      OUTBOX_PUBLISHER_ENABLED: "true"
+      OUTBOX_PUBLISHER_BATCH_SIZE: "10"
+      OUTBOX_PUBLISHER_FIXED_DELAY_MS: "5000"
+      OUTBOX_PUBLISHER_LEASE_DURATION_SECONDS: "30"
+
+      OUTBOX_PUBLISHER_SCHEDULING_ENABLED: "true"
     volumes:
       - upload_files:/var/lib/upload-service/uploads
     depends_on:
       postgres:
         condition: service_healthy
+      elasticmq:
+        condition: service_started  
+    restart: unless-stopped
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.7.1
+    ports:
+      - "127.0.0.1:9324:9324"
+    volumes:
+      - ./docker/elasticmq.conf:/opt/elasticmq.conf:ro
+      - elasticmq_data:/data
     restart: unless-stopped
 
 volumes:
   postgres_data:
   upload_files:
+  elasticmq_data:
