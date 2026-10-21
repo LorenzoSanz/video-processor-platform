@@ -1,9 +1,14 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/upload_platform
-    username: postgres
-    password: password
+    url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/upload_platform}"
+    username: "${SPRING_DATASOURCE_USERNAME:postgres}"
+    password: "${SPRING_DATASOURCE_PASSWORD:password}"
     driver-class-name: org.postgresql.Driver
+
+  servlet:
+    multipart:
+      max-file-size: 100MB      # Tomcat size limit
+      max-request-size: 105MB  
 
   jpa:
     hibernate:
@@ -17,5 +22,5 @@ spring:
     name: upload-service
 
 storage:
-  root-path: C:/uploads
+  root-path: "${STORAGE_ROOT_PATH:C:/uploads}"
   max-file-size: 104857600
