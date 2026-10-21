@@ -7,7 +7,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
+import com.lorenzosanz.uploadservice.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.entity.OutboxEvent;
 import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
@@ -20,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
+@Import(PostgresTestContainerConfiguration.class)
 class UploadPersistenceServiceIntegrationTest {
 
     @Autowired

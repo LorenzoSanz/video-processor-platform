@@ -9,10 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.lorenzosanz.uploadservice.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 
@@ -23,6 +25,7 @@ import jakarta.persistence.PersistenceContext;
     replace = AutoConfigureTestDatabase.Replace.NONE
 )
 @DataJpaTest
+@Import(PostgresTestContainerConfiguration.class)
 class UploadRepositoryTest {
   
   @Autowired

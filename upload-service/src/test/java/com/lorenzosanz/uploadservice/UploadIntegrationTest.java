@@ -20,11 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.context.annotation.Import;
 
 import java.util.Optional;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(PostgresTestContainerConfiguration.class)
 class UploadIntegrationTest {
 
   @Autowired
