@@ -20,6 +20,7 @@ import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 import com.lorenzosanz.uploadservice.messaging.OutboxMessage;
 import com.lorenzosanz.uploadservice.repository.OutboxEventRepository;
+import com.lorenzosanz.uploadservice.repository.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.repository.UploadRepository;
 
 import org.testcontainers.containers.GenericContainer;
@@ -78,6 +79,9 @@ class OutboxToSqsIntegrationTest {
 
     @Autowired
     private SqsClient sqsClient;
+
+    @Autowired
+    private ProcessingJobRepository processingJobRepository;
 
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
@@ -201,14 +205,21 @@ class OutboxToSqsIntegrationTest {
             }
 
         } finally {
-            if (eventId != null
-                    && outboxEventRepository.existsById(eventId)) {
-                outboxEventRepository.deleteById(eventId);
+                outboxEventRepository.findAll()
+                        .stream()
+                        .filter(event -> uploadId.equals(event.getAggregateId()))
+                        .map(OutboxEvent::getEventId)
+                        .toList()
+                        .forEach(outboxEventRepository::deleteById);
+    
+                processingJobRepository.findByUploadId(uploadId)
+                        .ifPresent(job ->
+                                processingJobRepository.deleteById(job.getJobId())
+                        );
+    
+                if (uploadRepository.existsById(uploadId)) {
+                    uploadRepository.deleteById(uploadId);
+                }
             }
-
-            if (uploadRepository.existsById(uploadId)) {
-                uploadRepository.deleteById(uploadId);
-            }
-        }
     }
 }

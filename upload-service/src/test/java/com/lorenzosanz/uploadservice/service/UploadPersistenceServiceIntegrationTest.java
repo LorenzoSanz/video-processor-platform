@@ -11,9 +11,12 @@ import org.springframework.context.annotation.Import;
 
 import com.lorenzosanz.uploadservice.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.entity.OutboxEvent;
+import com.lorenzosanz.uploadservice.entity.ProcessingJob;
 import com.lorenzosanz.uploadservice.entity.Upload;
+import com.lorenzosanz.uploadservice.enums.ProcessingJobStatus;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 import com.lorenzosanz.uploadservice.repository.OutboxEventRepository;
+import com.lorenzosanz.uploadservice.repository.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.repository.UploadRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,6 +36,9 @@ class UploadPersistenceServiceIntegrationTest {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private ProcessingJobRepository processingJobRepository;
 
     @Test
     void shouldPersistUploadAndOutboxEventSuccessfully() {
@@ -54,6 +60,20 @@ class UploadPersistenceServiceIntegrationTest {
             assertEquals(uploadId, savedUpload.getUploadId());
 
             assertTrue(uploadRepository.findById(uploadId).isPresent());
+
+            ProcessingJob job = processingJobRepository.findByUploadId(uploadId)
+        .orElseThrow();
+
+        assertNotNull(job.getJobId());
+        assertEquals(uploadId, job.getUploadId());
+        assertEquals(ProcessingJobStatus.PENDING, job.getStatus());
+        assertEquals(0, job.getAttempts());
+        assertNotNull(job.getCreatedAt());
+        assertNotNull(job.getNextAttemptAt());
+        assertNull(job.getClaimToken());
+        assertNull(job.getLeaseUntil());
+        assertNull(job.getLastHeartbeatAt());
+        assertNull(job.getOutputPath());
 
             Upload persistedUpload = uploadRepository.findById(uploadId)
                     .orElseThrow();
@@ -91,6 +111,9 @@ class UploadPersistenceServiceIntegrationTest {
                     .map(OutboxEvent::getEventId)
                     .toList()
                     .forEach(outboxEventRepository::deleteById);
+            
+            processingJobRepository.findByUploadId(uploadId)
+                    .ifPresent(job -> processingJobRepository.deleteById(job.getJobId()));        
 
             if (uploadRepository.existsById(uploadId)) {
                 uploadRepository.deleteById(uploadId);

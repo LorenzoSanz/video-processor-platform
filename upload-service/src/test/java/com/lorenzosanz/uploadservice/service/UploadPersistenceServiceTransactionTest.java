@@ -14,6 +14,7 @@ import com.lorenzosanz.uploadservice.entity.OutboxEvent;
 import com.lorenzosanz.uploadservice.entity.Upload;
 import com.lorenzosanz.uploadservice.enums.UploadStatus;
 import com.lorenzosanz.uploadservice.repository.OutboxEventRepository;
+import com.lorenzosanz.uploadservice.repository.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.repository.UploadRepository;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -32,6 +33,9 @@ class UploadPersistenceServiceTransactionTest {
     @Autowired
     private UploadRepository uploadRepository;
 
+    @Autowired
+    private ProcessingJobRepository processingJobRepository;
+
     @MockitoBean
     private OutboxEventRepository outboxEventRepository;
 
@@ -48,15 +52,14 @@ class UploadPersistenceServiceTransactionTest {
                 Instant.now()
         );
 
-       doAnswer(invocation -> {
+        doAnswer(invocation -> {
+            uploadRepository.flush();
 
-    uploadRepository.flush();
+            assertTrue(uploadRepository.existsById(uploadId));
 
-    assertTrue(uploadRepository.existsById(uploadId));
+            throw new IllegalStateException("Simulated Outbox failure");
 
-    throw new IllegalStateException("Simulated Outbox failure");
-
-}).when(outboxEventRepository).save(any(OutboxEvent.class));
+        }).when(outboxEventRepository).save(any(OutboxEvent.class));
 
         assertThrows(
                 IllegalStateException.class,
@@ -64,5 +67,7 @@ class UploadPersistenceServiceTransactionTest {
         );
 
         assertFalse(uploadRepository.existsById(uploadId));
+
+        assertTrue(processingJobRepository.findByUploadId(uploadId).isEmpty());
     }
 }
