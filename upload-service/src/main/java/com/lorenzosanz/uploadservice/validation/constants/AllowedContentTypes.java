@@ -10,6 +10,7 @@ public final class AllowedContentTypes {
     "image/png",
     "image/jpeg",
     "image/webp",
-    "image/gif"
+    "image/gif",
+    "video/mp4"
   );
 }
