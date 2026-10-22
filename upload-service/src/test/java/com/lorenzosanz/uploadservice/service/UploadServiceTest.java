@@ -1,24 +1,31 @@
 package com.lorenzosanz.uploadservice.service;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.multipart.MultipartFile;
-
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.lorenzosanz.uploadservice.dto.upload.UploadResponse;
 import com.lorenzosanz.uploadservice.entity.Upload;
@@ -31,122 +38,137 @@ import com.lorenzosanz.uploadservice.validation.FileValidator;
 
 @ExtendWith(MockitoExtension.class)
 class UploadServiceTest {
-  @Mock
-  private MultipartFile file;
-  
-  @Mock
-  private UploadPersistenceService uploadPersistenceService;
-  
-  @Mock
-  private StorageService storageService;
 
-  @Mock
-  private FileValidator fileValidator;
+    private static final String STORAGE_PATH = "2026/10/test.gif";
 
-  @Mock
-  private FileSignatureValidator fileSignatureValidator;
+    @Mock
+    private MultipartFile file;
 
-  @InjectMocks
-  private UploadService uploadService;
+    @Mock
+    private UploadPersistenceService uploadPersistenceService;
 
-  @BeforeEach
-  void setUp() {
-      when(file.getOriginalFilename()).thenReturn("image.gif");
-      when(file.getContentType()).thenReturn("image/gif");
-      when(file.getSize()).thenReturn(20000L);
-  }
+    @Mock
+    private StorageService storageService;
 
-  @Test
-  void shouldStartUploadSuccessfully() {
-    Upload savedUpload = new Upload(
-    UUID.randomUUID(), 
-    file.getOriginalFilename(),
-    UploadStatus.PENDING, 
-    file.getContentType(), 
-    file.getSize(),
-    Instant.now()
-    );
+    @Mock
+    private FileValidator fileValidator;
 
-    when(uploadPersistenceService.persistUploadAndOutbox(any(Upload.class))).thenReturn(savedUpload);
+    @Mock
+    private FileSignatureValidator fileSignatureValidator;
 
-    UploadResponse response = uploadService.startUpload(file);
+    @InjectMocks
+    private UploadService uploadService;
 
-    assertEquals(UploadStatus.PENDING, response.getStatus());
+    @BeforeEach
+    void setUp() {
+        when(file.getOriginalFilename()).thenReturn("image.gif");
+        when(file.getContentType()).thenReturn("image/gif");
+        when(file.getSize()).thenReturn(20_000L);
+    }
 
-    assertEquals(savedUpload.getUploadId(), response.getUploadId());
+    @Test
+    void shouldStartUploadSuccessfully() throws IOException {
+        when(file.getInputStream()).thenReturn(
+                new ByteArrayInputStream(new byte[] {1, 2, 3})
+        );
+        when(storageService.storeFile(
+                any(UUID.class),
+                anyString(),
+                any(Instant.class),
+                anyLong(),
+                any(InputStream.class)
+        )).thenReturn(STORAGE_PATH);
+        when(uploadPersistenceService.persistUploadAndOutbox(any(Upload.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-    verify(fileValidator).validate(file);
-    verify(fileSignatureValidator).validate(file);
+        UploadResponse response = uploadService.startUpload(file);
 
-    verify(storageService).storeFile(
-      any(Upload.class),
-      any(MultipartFile.class)
-  );
-    verify(uploadPersistenceService).persistUploadAndOutbox(any(Upload.class));
-  }
+        assertEquals(UploadStatus.PENDING, response.getStatus());
+        assertNotNull(response.getUploadId());
 
-  @Test
-  void shouldDeleteStoredFileWhenRepositoryFails() {
-    when(uploadPersistenceService.persistUploadAndOutbox(any(Upload.class))).thenThrow(new RuntimeException("Database error"));
+        verify(fileValidator).validate(file);
+        verify(fileSignatureValidator).validate(file);
+        verify(storageService).storeFile(
+                eq(response.getUploadId()),
+                eq("image.gif"),
+                any(Instant.class),
+                eq(20_000L),
+                any(InputStream.class)
+        );
 
-    assertThrows(RuntimeException.class,() -> uploadService.startUpload(file));
+        ArgumentCaptor<Upload> uploadCaptor = ArgumentCaptor.forClass(Upload.class);
+        verify(uploadPersistenceService).persistUploadAndOutbox(uploadCaptor.capture());
+        assertEquals(response.getUploadId(), uploadCaptor.getValue().getUploadId());
+        assertEquals(STORAGE_PATH, uploadCaptor.getValue().getStoragePath());
+    }
 
-    verify(uploadPersistenceService).persistUploadAndOutbox(any(Upload.class));
-    verify(storageService).deleteFile(any());
-  }
+    @Test
+    void shouldDeleteStoredFileWhenRepositoryFails() throws IOException {
+        when(file.getInputStream()).thenReturn(
+                new ByteArrayInputStream(new byte[] {1, 2, 3})
+        );
+        when(storageService.storeFile(
+                any(UUID.class),
+                anyString(),
+                any(Instant.class),
+                anyLong(),
+                any(InputStream.class)
+        )).thenReturn(STORAGE_PATH);
+        when(uploadPersistenceService.persistUploadAndOutbox(any(Upload.class)))
+                .thenThrow(new RuntimeException("Database error"));
 
-  @Test
-  void shouldNotSaveUploadWhenStorageFails() {
-    StorageException ex = new StorageException("Storage Error");
+        assertThrows(RuntimeException.class, () -> uploadService.startUpload(file));
 
-    doThrow(ex)
-    .when(storageService)
-    .storeFile(any(Upload.class), any(MultipartFile.class));
+        verify(uploadPersistenceService).persistUploadAndOutbox(any(Upload.class));
+        verify(storageService).deleteFile(STORAGE_PATH);
+    }
 
-    assertThrows(
-      StorageException.class,
-      () -> uploadService.startUpload(file)
-    );
-    
-    verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
-  }
+    @Test
+    void shouldNotSaveUploadWhenStorageFails() throws IOException {
+        when(file.getInputStream()).thenReturn(
+                new ByteArrayInputStream(new byte[] {1, 2, 3})
+        );
+        StorageException exception = new StorageException("Storage error");
 
-  @Test
-  void shouldStopProcessWhenValidationFails() {
-    FileValidationException ex = new FileValidationException("File Validation Exception");
+        doThrow(exception).when(storageService).storeFile(
+                any(UUID.class),
+                anyString(),
+                any(Instant.class),
+                anyLong(),
+                any(InputStream.class)
+        );
 
-    doThrow(ex)
-    .when(fileValidator)
-    .validate(any(MultipartFile.class));
+        assertThrows(StorageException.class, () -> uploadService.startUpload(file));
+        verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
+    }
 
-    assertThrows(
-      FileValidationException.class,
-      () -> uploadService.startUpload(file)
-    );
+    @Test
+    void shouldStopProcessWhenValidationFails() {
+        FileValidationException exception =
+                new FileValidationException("File validation exception");
+        doThrow(exception).when(fileValidator).validate(any(MultipartFile.class));
 
-    verify(fileSignatureValidator, never()).validate(file);
+        assertThrows(FileValidationException.class, () -> uploadService.startUpload(file));
 
-    verify(storageService, never()).storeFile(any(Upload.class), any(MultipartFile.class));
+        verify(fileSignatureValidator, never()).validate(file);
+        verify(storageService, never()).storeFile(
+                any(UUID.class), anyString(), any(Instant.class), anyLong(), any(InputStream.class)
+        );
+        verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
+    }
 
-    verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
-  }
+    @Test
+    void shouldStopProcessWhenSignatureValidationFails() {
+        FileValidationException exception =
+                new FileValidationException("File signature validation exception");
+        doThrow(exception).when(fileSignatureValidator).validate(any(MultipartFile.class));
 
-  @Test
-  void shouldStopProcessWhenSignatureValidationFails() {
-    FileValidationException ex = new FileValidationException("File signature Validation exception");
+        assertThrows(FileValidationException.class, () -> uploadService.startUpload(file));
 
-    doThrow(ex)
-    .when(fileSignatureValidator)
-    .validate(any(MultipartFile.class));
-
-    assertThrows(
-      FileValidationException.class,
-      () -> uploadService.startUpload(file));
-
-    verify(fileValidator).validate(file);
-
-    verify(storageService, never()).storeFile(any(Upload.class), any(MultipartFile.class));
-
-    verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
-  }
+        verify(fileValidator).validate(file);
+        verify(storageService, never()).storeFile(
+                any(UUID.class), anyString(), any(Instant.class), anyLong(), any(InputStream.class)
+        );
+        verify(uploadPersistenceService, never()).persistUploadAndOutbox(any(Upload.class));
+    }
 }

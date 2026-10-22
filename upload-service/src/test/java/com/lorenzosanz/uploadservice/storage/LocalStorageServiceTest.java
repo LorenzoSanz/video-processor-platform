@@ -1,10 +1,14 @@
 package com.lorenzosanz.uploadservice.storage;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -15,13 +19,16 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.mock.web.MockMultipartFile;
 
 import com.lorenzosanz.uploadservice.config.StorageProperties;
-import com.lorenzosanz.uploadservice.entity.Upload;
-import com.lorenzosanz.uploadservice.enums.UploadStatus;
+import com.lorenzosanz.uploadservice.exception.StorageException;
 
 class LocalStorageServiceTest {
+
+    private static final byte[] PNG_CONTENT = {
+            (byte) 0x89, 0x50, 0x4E, 0x47,
+            0x0D, 0x0A, 0x1A, 0x0A
+    };
 
     @TempDir
     Path tempDir;
@@ -32,157 +39,188 @@ class LocalStorageServiceTest {
     void setUp() {
         StorageProperties storageProperties = new StorageProperties();
         storageProperties.setRootPath(tempDir.toString());
-
         localStorageService = new LocalStorageService(storageProperties);
     }
 
     @Test
-    void shouldStoreFile() throws IOException {
-
+    void shouldStoreExactContentUsingBoundedCopy() throws IOException {
         UUID uploadId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-08-24T13:00:00Z");
 
-        LocalDateTime ldt = LocalDateTime.of(2026, 8, 24, 13, 0);
-        Instant instant = ldt.toInstant(ZoneOffset.UTC);
-
-        Upload upload = new Upload(
-            uploadId,
-            "test.png",
-            UploadStatus.PENDING,
-            "image/png",
-            8L,
-            instant // Pasamos directamente la variable ya procesada
+        String storagePath = localStorageService.storeFile(
+                uploadId,
+                "test.png",
+                createdAt,
+                PNG_CONTENT.length,
+                new ByteArrayInputStream(PNG_CONTENT)
         );
 
-        byte[] content = new byte[] {
-            (byte) 0x89, 0x50, 0x4E, 0x47,
-            0x0D, 0x0A, 0x1A, 0x0A
-        };
-
-        MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "test.png",
-            "image/png",
-            content
-        );
-
-        localStorageService.storeFile(upload, file);
-
-        assertTrue(upload.getStoragePath() != null);
-
-        Path storedFile = tempDir.resolve(upload.getStoragePath());
-
-        assertTrue(Files.exists(storedFile));
-        assertEquals(content.length, Files.size(storedFile));
+        assertEquals("2026/08/" + uploadId + ".png", storagePath);
+        Path storedFile = tempDir.resolve(storagePath);
+        assertTrue(Files.isRegularFile(storedFile));
+        assertEquals(PNG_CONTENT.length, Files.size(storedFile));
+        assertArrayEquals(PNG_CONTENT, Files.readAllBytes(storedFile));
     }
 
     @Test
-    void shouldBuildStoragePathUsingYearMonthAndUploadId() {
-
+    void shouldBuildStoragePathUsingUtcYearMonthAndUploadId() throws IOException {
         UUID uploadId = UUID.randomUUID();
+        Instant createdAt = LocalDateTime.of(2026, 8, 24, 13, 0)
+                .toInstant(ZoneOffset.UTC);
 
-        // Si tu clase Upload usa Instant, aquí también debes cambiar LocalDateTime por Instant
-        Instant instant = LocalDateTime.of(2026, 8, 24, 13, 0).toInstant(ZoneOffset.UTC);
-
-        Upload upload = new Upload(
-            uploadId,
-            "test.png",
-            UploadStatus.PENDING,
-            "image/png",
-            8L,
-            instant
+        String storagePath = localStorageService.storeFile(
+                uploadId,
+                "test.png",
+                createdAt,
+                PNG_CONTENT.length,
+                new ByteArrayInputStream(PNG_CONTENT)
         );
 
-        byte[] content = new byte[] {
-            (byte) 0x89, 0x50, 0x4E, 0x47,
-            0x0D, 0x0A, 0x1A, 0x0A
-        };
-
-        MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "test.png",
-            "image/png",
-            content
-        );
-
-        localStorageService.storeFile(upload, file);
-
-        assertEquals(
-            "2026/08/" + uploadId + ".png",
-            upload.getStoragePath()
-        );
+        assertEquals("2026/08/" + uploadId + ".png", storagePath);
     }
 
     @Test
-    void shouldDeleteFile() throws IOException {
-
+    void shouldDeleteStoredFile() throws IOException {
         UUID uploadId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-08-24T13:00:00Z");
 
-        Instant instant = LocalDateTime.of(2026, 8, 24, 13, 0).toInstant(ZoneOffset.UTC);
-
-        Upload upload = new Upload(
-            uploadId,
-            "test.png",
-            UploadStatus.PENDING,
-            "image/png",
-            8L,
-            instant
+        String storagePath = localStorageService.storeFile(
+                uploadId,
+                "test.png",
+                createdAt,
+                PNG_CONTENT.length,
+                new ByteArrayInputStream(PNG_CONTENT)
         );
-
-        byte[] content = new byte[] {
-            (byte) 0x89, 0x50, 0x4E, 0x47,
-            0x0D, 0x0A, 0x1A, 0x0A
-        };
-
-        MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "test.png",
-            "image/png",
-            content
-        );
-
-        localStorageService.storeFile(upload, file);
-
-        Path storedFile = tempDir.resolve(upload.getStoragePath());
+        Path storedFile = tempDir.resolve(storagePath);
 
         assertTrue(Files.exists(storedFile));
-
-        localStorageService.deleteFile(upload.getStoragePath());
-
+        localStorageService.deleteFile(storagePath);
         assertFalse(Files.exists(storedFile));
     }
 
     @Test
-    void shouldCreateDirectoriesWhenStoringFile() {
+    void shouldCreateDirectoriesWhenStoringFile() throws IOException {
+        UUID uploadId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-08-24T13:00:00Z");
 
-        // Ajustado a Instant
-        Instant instant = LocalDateTime.of(2026, 8, 24, 13, 0).toInstant(ZoneOffset.UTC);
-
-        Upload upload = new Upload(
-            UUID.randomUUID(),
-            "test.png",
-            UploadStatus.PENDING,
-            "image/png",
-            8L,
-            instant
+        String storagePath = localStorageService.storeFile(
+                uploadId,
+                "test.png",
+                createdAt,
+                PNG_CONTENT.length,
+                new ByteArrayInputStream(PNG_CONTENT)
         );
-
-        byte[] content = new byte[] {
-            (byte) 0x89, 0x50, 0x4E, 0x47,
-            0x0D, 0x0A, 0x1A, 0x0A
-        };
-
-        MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "test.png",
-            "image/png",
-            content
-        );
-
-        localStorageService.storeFile(upload, file);
 
         Path expectedDirectory = tempDir.resolve("2026/08");
-
-        assertTrue(Files.exists(expectedDirectory));
         assertTrue(Files.isDirectory(expectedDirectory));
+        assertTrue(Files.isRegularFile(tempDir.resolve(storagePath)));
+    }
+
+    @Test
+    void shouldNotOverwriteExistingFile() throws IOException {
+        UUID uploadId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-08-24T13:00:00Z");
+        byte[] originalContent = PNG_CONTENT.clone();
+        byte[] replacementContent = {1, 2, 3, 4};
+
+        String storagePath = localStorageService.storeFile(
+                uploadId,
+                "test.png",
+                createdAt,
+                originalContent.length,
+                new ByteArrayInputStream(originalContent)
+        );
+        Path storedFile = tempDir.resolve(storagePath);
+
+        assertThrows(
+                StorageException.class,
+                () -> localStorageService.storeFile(
+                        uploadId,
+                        "test.png",
+                        createdAt,
+                        replacementContent.length,
+                        new ByteArrayInputStream(replacementContent)
+                )
+        );
+
+        assertArrayEquals(originalContent, Files.readAllBytes(storedFile));
+    }
+
+    @Test
+    void shouldDeletePartialFileWhenInputStreamFails() {
+        UUID uploadId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-08-24T13:00:00Z");
+        byte[] firstChunk = {1, 2, 3, 4};
+        Path expectedFile = tempDir.resolve(
+                "2026/08/" + uploadId + ".png"
+        );
+
+        InputStream failingStream = new InputStream() {
+            private boolean firstRead = true;
+            private int offset;
+
+            @Override
+            public int read() throws IOException {
+                if (offset < firstChunk.length) {
+                    return firstChunk[offset++] & 0xff;
+                }
+                throw new IOException("Simulated stream failure");
+            }
+
+            @Override
+            public int read(byte[] buffer, int off, int len) throws IOException {
+                if (!firstRead) {
+                    throw new IOException("Simulated stream failure");
+                }
+                firstRead = false;
+                int count = Math.min(len, firstChunk.length);
+                System.arraycopy(firstChunk, 0, buffer, off, count);
+                offset = count;
+                return count;
+            }
+        };
+
+        assertThrows(
+                StorageException.class,
+                () -> localStorageService.storeFile(
+                        uploadId,
+                        "partial.png",
+                        createdAt,
+                        8,
+                        failingStream
+                )
+        );
+
+        assertFalse(Files.exists(expectedFile));
+    }
+
+    @Test
+    void shouldDeletePartialFileWhenStreamSizeDoesNotMatchExpectedSize() {
+        UUID uploadId = UUID.randomUUID();
+        Instant createdAt = Instant.parse("2026-08-24T13:00:00Z");
+        Path expectedFile = tempDir.resolve(
+                "2026/08/" + uploadId + ".png"
+        );
+
+        assertThrows(
+                StorageException.class,
+                () -> localStorageService.storeFile(
+                        uploadId,
+                        "test.png",
+                        createdAt,
+                        PNG_CONTENT.length + 1L,
+                        new ByteArrayInputStream(PNG_CONTENT)
+                )
+        );
+
+        assertFalse(Files.exists(expectedFile));
+    }
+
+    @Test
+    void shouldRejectStoragePathOutsideRoot() {
+        assertThrows(
+                StorageException.class,
+                () -> localStorageService.deleteFile("../outside.txt")
+        );
     }
 }

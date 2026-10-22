@@ -1,11 +1,27 @@
 package com.lorenzosanz.uploadservice.storage;
 
-import com.lorenzosanz.uploadservice.entity.Upload; 
-import org.springframework.web.multipart.MultipartFile;
+import java.io.InputStream;
+import java.time.Instant;
+import java.util.UUID;
 
 public interface StorageService {
 
-  void storeFile(Upload upload, MultipartFile multipartFile);
+    /**
+     * Stores exactly {@code expectedSize} bytes and returns the relative storage path.
+     *
+     * <p>The caller owns the input stream and is responsible for closing it.
+     * Implementations must not close the supplied input stream.</p>
+     *
+     * @throws com.lorenzosanz.uploadservice.exception.StorageException
+     *         if the stream cannot be stored or its byte count differs from expectedSize
+     */
+    String storeFile(
+            UUID uploadId,
+            String originalFilename,
+            Instant createdAt,
+            long expectedSize,
+            InputStream inputStream
+    );
 
-  void deleteFile(String storagePath);
+    void deleteFile(String storagePath);
 }
