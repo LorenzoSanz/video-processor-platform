@@ -23,5 +23,7 @@ public interface StorageService {
             InputStream inputStream
     );
 
+    InputStream openForRead(String storagePath);
+
     void deleteFile(String storagePath);
 }

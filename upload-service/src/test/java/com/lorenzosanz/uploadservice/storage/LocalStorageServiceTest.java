@@ -223,4 +223,47 @@ class LocalStorageServiceTest {
                 () -> localStorageService.deleteFile("../outside.txt")
         );
     }
+
+    @Test
+    void shouldReadStoredFileAsStream() throws IOException {
+    UUID uploadId = UUID.randomUUID();
+    Instant createdAt = Instant.parse("2026-08-24T13:00:00Z");
+
+    byte[] content = new byte[] {
+            (byte) 0x89, 0x50, 0x4E, 0x47,
+            0x0D, 0x0A, 0x1A, 0x0A
+    };
+
+    String storagePath = localStorageService.storeFile(
+            uploadId,
+            "test.png",
+            createdAt,
+            content.length,
+            new java.io.ByteArrayInputStream(content)
+    );
+
+    try (InputStream inputStream =
+                 localStorageService.openForRead(storagePath)) {
+
+        assertArrayEquals(content, inputStream.readAllBytes());
+    }
+}
+
+    @Test
+    void shouldRejectPathOutsideStorageRoot() {
+        assertThrows(
+            StorageException.class,
+            () -> localStorageService.openForRead("../../outside.png")
+        );
+}
+
+    @Test
+    void shouldFailWhenStoredFileDoesNotExist() {
+        assertThrows(
+            StorageException.class,
+            () -> localStorageService.openForRead(
+                    "2026/08/nonexistent.png"
+            )
+        );
+}
 }

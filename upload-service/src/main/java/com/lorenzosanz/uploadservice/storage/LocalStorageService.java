@@ -181,4 +181,21 @@ public class LocalStorageService implements StorageService {
 
         return resolved;
     }
+
+    @Override
+    public InputStream openForRead(String storagePath) {
+    Path filePath = resolveStoragePath(storagePath);
+
+    try {
+        return Files.newInputStream(
+                filePath,
+                StandardOpenOption.READ
+        );
+    } catch (IOException exception) {
+        throw new StorageException(
+                "Failed to open stored file for reading",
+                exception
+        );
+    }
+}
 }
