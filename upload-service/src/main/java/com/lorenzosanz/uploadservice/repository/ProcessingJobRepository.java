@@ -22,4 +22,10 @@ public interface ProcessingJobRepository
     Optional<ProcessingJob> findByUploadIdForUpdate(
         @Param("uploadId") UUID uploadId
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select job from ProcessingJob job where job.jobId = :jobId")
+    Optional<ProcessingJob> findByJobIdForUpdate(
+        @Param("jobId") UUID jobId
+    );
 }

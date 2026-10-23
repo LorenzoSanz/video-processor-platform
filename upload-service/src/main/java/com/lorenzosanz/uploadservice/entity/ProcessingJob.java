@@ -177,4 +177,40 @@ public class ProcessingJob {
             this.startedAt = claimedAt;
         }
     }
+
+    public boolean renewLease(
+        UUID expectedClaimToken,
+        Instant now,
+        Instant requestedLeaseUntil) {
+
+    if (expectedClaimToken == null
+            || now == null
+            || requestedLeaseUntil == null) {
+        throw new IllegalArgumentException(
+                "Claim token and timestamps are required"
+        );
+    }
+
+    if (!requestedLeaseUntil.isAfter(now)) {
+        throw new IllegalArgumentException(
+                "New lease expiration must be in the future"
+        );
+    }
+
+    if (status != ProcessingJobStatus.PROCESSING
+            || claimToken == null
+            || !claimToken.equals(expectedClaimToken)
+            || leaseUntil == null
+            || !leaseUntil.isAfter(now)) {
+        return false;
+    }
+
+    if (requestedLeaseUntil.isAfter(leaseUntil)) {
+        this.leaseUntil = requestedLeaseUntil;
+    }
+
+    this.lastHeartbeatAt = now;
+
+    return true;
+}
 }
