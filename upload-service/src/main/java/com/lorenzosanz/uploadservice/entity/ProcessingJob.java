@@ -129,4 +129,52 @@ public class ProcessingJob {
     public Instant getCompletedAt() {
         return completedAt;
     }
+
+    public boolean isClaimableAt(Instant now) {
+        if (now == null) {
+            throw new IllegalArgumentException("Current time is required");
+        }
+    
+        if (status == ProcessingJobStatus.PENDING) {
+            return nextAttemptAt != null
+                    && !nextAttemptAt.isAfter(now);
+        }
+    
+        if (status == ProcessingJobStatus.PROCESSING) {
+            return leaseUntil != null
+                    && !leaseUntil.isAfter(now);
+        }
+    
+        return false;
+    }
+    
+    public void claim(UUID token, Instant claimedAt, Instant newLeaseUntil) {
+        if (token == null || claimedAt == null || newLeaseUntil == null) {
+            throw new IllegalArgumentException(
+                    "Claim token and timestamps are required"
+            );
+        }
+    
+        if (!newLeaseUntil.isAfter(claimedAt)) {
+            throw new IllegalArgumentException(
+                    "Lease expiration must be after claim time"
+            );
+        }
+    
+        if (!isClaimableAt(claimedAt)) {
+            throw new IllegalStateException(
+                    "Processing job is not claimable"
+            );
+        }
+    
+        this.status = ProcessingJobStatus.PROCESSING;
+        this.attempts++;
+        this.claimToken = token;
+        this.leaseUntil = newLeaseUntil;
+        this.lastHeartbeatAt = claimedAt;
+    
+        if (this.startedAt == null) {
+            this.startedAt = claimedAt;
+        }
+    }
 }
