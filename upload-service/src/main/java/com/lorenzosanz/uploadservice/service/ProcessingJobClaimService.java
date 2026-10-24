@@ -9,16 +9,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lorenzosanz.uploadservice.entity.ProcessingJob;
+import com.lorenzosanz.uploadservice.entity.Upload;
+import com.lorenzosanz.uploadservice.enums.UploadStatus;
 import com.lorenzosanz.uploadservice.repository.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.repository.UploadRepository;
 
 @Service
 public class ProcessingJobClaimService {
 
     private final ProcessingJobRepository processingJobRepository;
 
+    private final UploadRepository uploadRepository;
+
     public ProcessingJobClaimService(
-            ProcessingJobRepository processingJobRepository) {
+            ProcessingJobRepository processingJobRepository, UploadRepository uploadRepository) {
         this.processingJobRepository = processingJobRepository;
+        this.uploadRepository = uploadRepository;
     }
 
     @Transactional
@@ -52,10 +58,24 @@ public class ProcessingJobClaimService {
             return Optional.empty();
         }
 
+        Upload upload = uploadRepository.findById(job.getUploadId())
+        .orElseThrow(() -> new IllegalStateException(
+                "Processing job references a missing upload"
+        ));
+
+        if (upload.getStatus() == UploadStatus.COMPLETED
+        || upload.getStatus() == UploadStatus.FAILED) {
+            throw new IllegalStateException(
+                "Cannot claim a job whose upload is in a terminal state"
+            );
+        }
+
         UUID claimToken = UUID.randomUUID();
         Instant leaseUntil = now.plus(leaseDuration);
 
         job.claim(claimToken, now, leaseUntil);
+
+        upload.setStatus(UploadStatus.PROCESSING);
 
         processingJobRepository.flush();
 

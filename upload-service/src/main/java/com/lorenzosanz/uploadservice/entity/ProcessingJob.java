@@ -212,5 +212,40 @@ public class ProcessingJob {
     this.lastHeartbeatAt = now;
 
     return true;
-}
+    }
+
+    public boolean complete(
+        UUID expectedClaimToken,
+        Instant completedAt,
+        String outputPath) {
+
+    if (expectedClaimToken == null || completedAt == null) {
+        throw new IllegalArgumentException(
+                "Claim token and completion time are required"
+        );
+    }
+
+    if (outputPath == null || outputPath.isBlank()) {
+        throw new IllegalArgumentException(
+                "Output path is required"
+        );
+    }
+
+    if (status != ProcessingJobStatus.PROCESSING
+            || claimToken == null
+            || !claimToken.equals(expectedClaimToken)
+            || leaseUntil == null
+            || !leaseUntil.isAfter(completedAt)) {
+        return false;
+    }
+
+    this.status = ProcessingJobStatus.COMPLETED;
+    this.outputPath = outputPath.trim();
+    this.completedAt = completedAt;
+    this.claimToken = null;
+    this.leaseUntil = null;
+    this.lastError = null;
+
+    return true;
+    }
 }

@@ -52,6 +52,13 @@ class ProcessingJobClaimServiceIntegrationTest {
 
             assertTrue(result.isPresent());
 
+            assertEquals(
+                UploadStatus.PROCESSING,
+                uploadRepository.findById(uploadId)
+                        .orElseThrow()
+                        .getStatus()
+            );
+
             ProcessingJob claimed = result.get();
 
             assertEquals(ProcessingJobStatus.PROCESSING, claimed.getStatus());
