@@ -1,7 +1,5 @@
 package com.lorenzosanz.uploadservice.upload.application.port;
 
-import com.lorenzosanz.uploadservice.upload.exception.StorageException;
-
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.UUID;
