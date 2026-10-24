@@ -13,105 +13,137 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-
 @Entity
 public class Upload {
 
-  @Id
-  @NotNull
-  @Column(nullable = false)
-  private UUID uploadId;
-  
-  @NotBlank
-  @Size(max = 255)
-  @Column(nullable = false, length = 255)
-  private String fileName;
-  
-  private String storagePath;
-  
-  @Enumerated(EnumType.STRING)
-  @NotNull
-  @Column(nullable = false)
-  private UploadStatus status;
-  
-  @NotBlank
-  @Size(max = 255)
-  @Column(nullable = false, length = 255)
-  private String contentType;
-  
-  @Positive
-  @Column(nullable = false)
-  private long size;
-  
-  @NotNull
-  @Column(nullable = false)
-  private Instant createdAt;
+    @Id
+    @NotNull
+    @Column(nullable = false)
+    private UUID uploadId;
 
-  public Upload() {
-  }
+    @NotBlank
+    @Size(max = 255)
+    @Column(nullable = false, length = 255)
+    private String fileName;
 
-  public Upload(UUID uploadId, String fileName, UploadStatus status, String contentType, long size, Instant createdAt) {
-    this.uploadId = uploadId;
-    this.fileName = fileName;
-    this.status = status;
-    this.contentType = contentType;
-    this.size = size;
-    this.createdAt = createdAt;
-  }
+    private String storagePath;
 
-  public UUID getUploadId() {
-    return uploadId;
-  }
+    @Enumerated(EnumType.STRING)
+    @NotNull
+    @Column(nullable = false)
+    private UploadStatus status;
 
-  public String getFileName() {
-    return fileName;
-  }
+    @NotBlank
+    @Size(max = 255)
+    @Column(nullable = false, length = 255)
+    private String contentType;
 
-  public String getStoragePath() {
-    return storagePath;
-  }
+    @Positive
+    @Column(nullable = false)
+    private long size;
 
-  public UploadStatus getStatus() {
-    return status;
-  }
+    @NotNull
+    @Column(nullable = false)
+    private Instant createdAt;
 
-  public String getContentType() {
-    return contentType;
-  }
+    protected Upload() {
+        // Requerido por JPA.
+    }
 
-  public long getSize() {
-    return size;
-  }
+    public Upload(
+            UUID uploadId,
+            String fileName,
+            UploadStatus status,
+            String contentType,
+            long size,
+            Instant createdAt) {
 
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
+        this.uploadId = uploadId;
+        this.fileName = fileName;
+        this.status = status;
+        this.contentType = contentType;
+        this.size = size;
+        this.createdAt = createdAt;
+    }
 
-  public void setUploadId(UUID uploadId) {
-    this.uploadId = uploadId;
-  }
+    public UUID getUploadId() {
+        return uploadId;
+    }
 
-  public void setFileName(String fileName) {
-    this.fileName = fileName;
-  }
+    public String getFileName() {
+        return fileName;
+    }
 
-  public void setStatus(UploadStatus status) {
-    this.status = status;
-  }
+    public String getStoragePath() {
+        return storagePath;
+    }
 
-  public void setContentType(String contentType) {
-    this.contentType = contentType;
-  }
+    public UploadStatus getStatus() {
+        return status;
+    }
 
-  public void setSize(long size) {
-    this.size = size;
-  }
+    public String getContentType() {
+        return contentType;
+    }
 
-  public void setCreatedAt(Instant createdAt) {
-    this.createdAt = createdAt;
-  }
+    public long getSize() {
+        return size;
+    }
 
-  public void setStoragePath(String storagePath) {
-    this.storagePath = storagePath;
-  }
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void assignStoragePath(String storagePath) {
+        if (storagePath == null || storagePath.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Storage path is required"
+            );
+        }
+
+        if (this.storagePath != null) {
+            throw new IllegalStateException(
+                    "Storage path has already been assigned"
+            );
+        }
+
+        this.storagePath = storagePath;
+    }
+
+    public void markProcessing() {
+        // PROCESSING también se permite porque otro worker puede
+        // recuperar un trabajo cuyo lease haya vencido.
+        if (status != UploadStatus.PENDING
+                && status != UploadStatus.PROCESSING) {
+            throw new IllegalStateException(
+                    "Cannot process an upload in status " + status
+            );
+        }
+
+        this.status = UploadStatus.PROCESSING;
+    }
+
+    public void markCompleted() {
+        requireProcessing("complete");
+        this.status = UploadStatus.COMPLETED;
+    }
+
+    public void markPendingForRetry() {
+        requireProcessing("schedule a retry for");
+        this.status = UploadStatus.PENDING;
+    }
+
+    public void markFailed() {
+        requireProcessing("fail");
+        this.status = UploadStatus.FAILED;
+    }
+
+    private void requireProcessing(String operation) {
+        if (status != UploadStatus.PROCESSING) {
+            throw new IllegalStateException(
+                    "Cannot " + operation
+                            + " an upload in status " + status
+            );
+        }
+    }
 }

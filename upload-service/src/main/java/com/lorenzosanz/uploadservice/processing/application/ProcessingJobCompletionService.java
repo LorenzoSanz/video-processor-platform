@@ -61,7 +61,7 @@ public class ProcessingJobCompletionService {
                                     "Processing job references a missing upload"
                             ));
 
-                    upload.setStatus(UploadStatus.COMPLETED);
+                    upload.markCompleted();
 
                     return true;
                 })

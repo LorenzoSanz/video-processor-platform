@@ -62,7 +62,7 @@ public class UploadService {
         );
 
         try (InputStream inputStream = file.getInputStream()) {
-            upload.setStoragePath(
+            upload.assignStoragePath(
                     storageService.storeFile(
                             uploadId,
                             fileName,

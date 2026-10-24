@@ -75,7 +75,7 @@ public class ProcessingJobClaimService {
 
         job.claim(claimToken, now, leaseUntil);
 
-        upload.setStatus(UploadStatus.PROCESSING);
+        upload.markProcessing();
 
         processingJobRepository.flush();
 

@@ -97,13 +97,12 @@ public class ProcessingJobFailureService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Processing job references a missing upload"
                 ));
-
-        if (job.getStatus() == ProcessingJobStatus.FAILED) {
-            upload.setStatus(UploadStatus.FAILED);
-        } else {
-            upload.setStatus(UploadStatus.PENDING);
-        }
-
+        
+            if (job.getStatus() == ProcessingJobStatus.FAILED) {
+                upload.markFailed();
+            } else {
+                upload.markPendingForRetry();
+            }
         return true;
     }
 
