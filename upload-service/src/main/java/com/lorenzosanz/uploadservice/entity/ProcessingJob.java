@@ -248,4 +248,62 @@ public class ProcessingJob {
 
     return true;
     }
+
+    public boolean fail(
+        UUID expectedClaimToken,
+        Instant failedAt,
+        String errorMessage,
+        int maxAttempts,
+        Instant retryAt,
+        boolean retryable) {
+
+    if (expectedClaimToken == null
+            || failedAt == null
+            || errorMessage == null
+            || errorMessage.isBlank()
+            || retryAt == null) {
+        throw new IllegalArgumentException(
+                "Claim token, failure time, error and retry time are required"
+        );
+    }
+
+    if (maxAttempts < 1) {
+        throw new IllegalArgumentException(
+                "Maximum attempts must be at least one"
+        );
+    }
+
+    if (retryable && !retryAt.isAfter(failedAt)) {
+        throw new IllegalArgumentException(
+                "Retry time must be after the failure time"
+        );
+    }
+
+    // An old claim cant modify a new job.
+    if (status != ProcessingJobStatus.PROCESSING
+            || claimToken == null
+            || !claimToken.equals(expectedClaimToken)
+            || leaseUntil == null
+            || !leaseUntil.isAfter(failedAt)) {
+        return false;
+    }
+
+    String normalizedError = errorMessage.trim();
+
+    this.lastError = normalizedError.length() > 2000
+            ? normalizedError.substring(0, 2000)
+            : normalizedError;
+
+    this.claimToken = null;
+    this.leaseUntil = null;
+
+    if (retryable && attempts < maxAttempts) {
+        this.status = ProcessingJobStatus.PENDING;
+        this.nextAttemptAt = retryAt;
+    } else {
+        this.status = ProcessingJobStatus.FAILED;
+    }
+
+    return true;
+}
 }

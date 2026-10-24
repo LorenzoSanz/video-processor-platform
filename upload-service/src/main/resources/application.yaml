@@ -41,3 +41,8 @@ outbox:
     batch-size: ${OUTBOX_PUBLISHER_BATCH_SIZE:10}
     fixed-delay-ms: ${OUTBOX_PUBLISHER_FIXED_DELAY_MS:5000}
     lease-duration-seconds: ${OUTBOX_PUBLISHER_LEASE_DURATION_SECONDS:30}  
+
+processing:
+  max-attempts: 5
+  initial-backoff-seconds: 5
+  max-backoff-seconds: 300    
