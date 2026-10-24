@@ -12,7 +12,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.lorenzosanz.uploadservice.upload.api.UploadResponse;
 import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.upload.exception.StorageException;
 import com.lorenzosanz.uploadservice.upload.application.port.StorageService;
 import com.lorenzosanz.uploadservice.upload.application.validation.FileSignatureValidator;
@@ -53,12 +52,11 @@ public class UploadService {
         fileSignatureValidator.validate(file);
 
         Upload upload = new Upload(
-                uploadId,
-                fileName,
-                UploadStatus.PENDING,
-                contentType,
-                size,
-                uploadDate
+            uploadId,
+            fileName,
+            contentType,
+            size,
+            uploadDate
         );
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -101,9 +99,10 @@ public class UploadService {
             );
 
             return new UploadResponse(
-                    UploadStatus.PENDING,
-                    savedUpload.getUploadId()
+                "PENDING",
+                savedUpload.getUploadId()
             );
+
         } catch (RuntimeException persistenceException) {
             try {
                 storageService.deleteFile(upload.getStoragePath());

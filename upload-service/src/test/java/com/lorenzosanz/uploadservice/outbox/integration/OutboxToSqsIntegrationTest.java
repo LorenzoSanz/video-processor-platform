@@ -20,7 +20,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.outbox.domain.OutboxEvent;
 import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.outbox.application.OutboxMessage;
 import com.lorenzosanz.uploadservice.outbox.infrastructure.persistence.OutboxEventRepository;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
@@ -140,7 +139,6 @@ class OutboxToSqsIntegrationTest {
             Upload upload = new Upload(
                     uploadId,
                     "integration-video.mp4",
-                    UploadStatus.PENDING,
                     "video/mp4",
                     1024L,
                     Instant.now()

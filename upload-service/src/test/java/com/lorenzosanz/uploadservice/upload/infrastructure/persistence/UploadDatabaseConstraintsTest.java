@@ -28,12 +28,11 @@ class UploadDatabaseConstraintsTest {
                     upload_id,
                     file_name,
                     storage_path,
-                    status,
                     content_type,
                     size,
                     created_at
                 )
-                VALUES (?, ?, NULL, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (?, ?, NULL, ?, ?, CURRENT_TIMESTAMP)
                 """;
 
         jdbcTemplate.update(

@@ -1,5 +1,6 @@
 package com.lorenzosanz.uploadservice.upload.api;
 
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -7,13 +8,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.mock.web.MockMultipartFile;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.UUID;
+import com.lorenzosanz.uploadservice.shared.web.GlobalExceptionHandler;
+import com.lorenzosanz.uploadservice.upload.application.UploadService;
+import com.lorenzosanz.uploadservice.upload.exception.FileValidationException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -21,73 +24,70 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
-import com.lorenzosanz.uploadservice.upload.exception.FileValidationException;
-import com.lorenzosanz.uploadservice.shared.web.GlobalExceptionHandler;
-import com.lorenzosanz.uploadservice.upload.application.UploadService;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class UploadControllerTest {
-  
-  private MockMvc mockMvc;
 
-  private MockMultipartFile file;
+    private MockMvc mockMvc;
 
-  private UUID uploadId;
+    private MockMultipartFile file;
 
-  @Mock
-  private UploadService uploadService;
+    private UUID uploadId;
 
-  @InjectMocks
-  private UploadController uploadController;
+    @Mock
+    private UploadService uploadService;
 
-  @BeforeEach
-  void setUp() {
-    mockMvc = MockMvcBuilders
-    .standaloneSetup(uploadController)
-    .setControllerAdvice(new GlobalExceptionHandler())
-    .build();
+    @InjectMocks
+    private UploadController uploadController;
 
-    file = new MockMultipartFile(
-      "file",
-      "image.gif",
-      "image/gif",
-      "fake image content".getBytes()
-  );
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(uploadController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
 
-    uploadId = UUID.randomUUID();
-  }
+        file = new MockMultipartFile(
+                "file",
+                "image.gif",
+                MediaType.IMAGE_GIF_VALUE,
+                "fake image content".getBytes()
+        );
 
-  @Test 
-  void shouldReturnUploadResponseWhenFileIsValid() throws Exception {
-    when(uploadService.startUpload(any(MultipartFile.class)))
-    .thenReturn(new UploadResponse(
-      UploadStatus.PENDING,
-      uploadId
-    ));
-    
-    mockMvc.perform(
-      multipart("/upload")
-        .file(file))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.status").value("PENDING"));
+        uploadId = UUID.randomUUID();
+    }
 
-    verify(uploadService).startUpload(any(MultipartFile.class));
-  }
+    @Test
+    void shouldReturnUploadResponseWhenFileIsValid() throws Exception {
+        when(uploadService.startUpload(any(MultipartFile.class)))
+                .thenReturn(new UploadResponse(
+                        "PENDING",
+                        uploadId
+                ));
 
-  @Test
-  void shouldReturnBadRequestWhenValidationFails() throws Exception {
+        mockMvc.perform(
+                multipart("/upload")
+                        .file(file)
+        )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.uploadId").value(uploadId.toString()));
 
-    doThrow(new FileValidationException("Validation failed"))
-        .when(uploadService)
-        .startUpload(any(MultipartFile.class));
+        verify(uploadService).startUpload(any(MultipartFile.class));
+    }
 
-    mockMvc.perform(
-        multipart("/upload")
-            .file(file)
-    )
-    .andExpect(status().isBadRequest());
+    @Test
+    void shouldReturnBadRequestWhenValidationFails() throws Exception {
 
-}
+        doThrow(new FileValidationException("Validation failed"))
+                .when(uploadService)
+                .startUpload(any(MultipartFile.class));
+
+        mockMvc.perform(
+                multipart("/upload")
+                        .file(file)
+        )
+                .andExpect(status().isBadRequest());
+    }
 }

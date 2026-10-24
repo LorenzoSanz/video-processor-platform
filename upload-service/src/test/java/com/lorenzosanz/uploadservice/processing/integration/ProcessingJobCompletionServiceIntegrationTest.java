@@ -15,7 +15,6 @@ import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
 import com.lorenzosanz.uploadservice.upload.domain.Upload;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
@@ -65,9 +64,6 @@ class ProcessingJobCompletionServiceIntegrationTest {
                     .findByUploadId(uploadId)
                     .orElseThrow();
 
-            Upload persistedUpload = uploadRepository.findById(uploadId)
-                    .orElseThrow();
-
             assertEquals(
                     ProcessingJobStatus.COMPLETED,
                     persistedJob.getStatus()
@@ -77,11 +73,6 @@ class ProcessingJobCompletionServiceIntegrationTest {
             assertNull(persistedJob.getClaimToken());
             assertNull(persistedJob.getLeaseUntil());
 
-            assertEquals(
-                    UploadStatus.COMPLETED,
-                    persistedUpload.getStatus()
-            );
-
         } finally {
             cleanUp(uploadId);
         }
@@ -90,39 +81,34 @@ class ProcessingJobCompletionServiceIntegrationTest {
     @Test
     void shouldRejectCompletionWithWrongClaimToken() {
         UUID uploadId = createJob();
-
+    
         try {
             ProcessingJob claimed = claimService.claim(
                     uploadId,
                     Duration.ofMinutes(2)
             ).orElseThrow();
-
+    
             boolean completed = completionService.complete(
                     claimed.getJobId(),
                     UUID.randomUUID(),
                     "processed/" + uploadId + ".mp4"
             );
-
+    
             assertFalse(completed);
-
+    
             ProcessingJob persistedJob = processingJobRepository
                     .findByUploadId(uploadId)
                     .orElseThrow();
-
-            Upload persistedUpload = uploadRepository.findById(uploadId)
-                    .orElseThrow();
-
+    
             assertEquals(
                     ProcessingJobStatus.PROCESSING,
                     persistedJob.getStatus()
             );
+    
             assertNull(persistedJob.getCompletedAt());
             assertNotNull(persistedJob.getClaimToken());
-            assertEquals(
-                    UploadStatus.PROCESSING,
-                    persistedUpload.getStatus()
-            );
-
+            assertNotNull(persistedJob.getLeaseUntil());
+    
         } finally {
             cleanUp(uploadId);
         }
@@ -133,40 +119,42 @@ class ProcessingJobCompletionServiceIntegrationTest {
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMillis(200)
-            ).orElseThrow();
+                ProcessingJob claimed = claimService.claim(
+                        uploadId,
+                        Duration.ofMillis(200)
+                ).orElseThrow();
 
-            Thread.sleep(500);
+                Thread.sleep(500);
 
-            boolean completed = completionService.complete(
-                    claimed.getJobId(),
-                    claimed.getClaimToken(),
-                    "processed/" + uploadId + ".mp4"
-            );
+                boolean completed = completionService.complete(
+                        claimed.getJobId(),
+                        claimed.getClaimToken(),
+                        "processed/" + uploadId + ".mp4"
+                );
 
-            assertFalse(completed);
+                assertFalse(completed);
 
-            ProcessingJob persistedJob = processingJobRepository
-                    .findByUploadId(uploadId)
-                    .orElseThrow();
+                ProcessingJob persistedJob = processingJobRepository
+                        .findByUploadId(uploadId)
+                        .orElseThrow();
 
-            Upload persistedUpload = uploadRepository.findById(uploadId)
-                    .orElseThrow();
+                assertEquals(
+                        ProcessingJobStatus.PROCESSING,
+                        persistedJob.getStatus()
+                );
 
-            assertEquals(
-                    ProcessingJobStatus.PROCESSING,
-                    persistedJob.getStatus()
-            );
-            assertNull(persistedJob.getCompletedAt());
-            assertEquals(
-                    UploadStatus.PROCESSING,
-                    persistedUpload.getStatus()
-            );
+                assertNull(persistedJob.getCompletedAt());
+                assertEquals(
+                        claimed.getClaimToken(),
+                        persistedJob.getClaimToken()
+                );
+
+                assertFalse(
+                        persistedJob.getLeaseUntil().isAfter(Instant.now())
+                );
 
         } finally {
-            cleanUp(uploadId);
+        cleanUp(uploadId);
         }
     }
 
@@ -187,7 +175,6 @@ class ProcessingJobCompletionServiceIntegrationTest {
         Upload upload = new Upload(
                 uploadId,
                 "completion-test-" + uploadId + ".mp4",
-                UploadStatus.PENDING,
                 "video/mp4",
                 1024L,
                 Instant.now()

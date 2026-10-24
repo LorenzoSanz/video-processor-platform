@@ -1,5 +1,4 @@
 package com.lorenzosanz.uploadservice.upload.integration;
-import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,19 +22,18 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.ObjectMapper;
 
+import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.upload.api.UploadResponse;
-import com.lorenzosanz.uploadservice.outbox.domain.OutboxEvent;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
 import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
-import com.lorenzosanz.uploadservice.outbox.infrastructure.persistence.OutboxEventRepository;
-import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 import com.lorenzosanz.uploadservice.upload.application.port.StorageService;
-
-import tools.jackson.databind.ObjectMapper;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
+import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.outbox.domain.OutboxEvent;
+import com.lorenzosanz.uploadservice.outbox.infrastructure.persistence.OutboxEventRepository;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -142,6 +140,7 @@ class UploadIntegrationTest {
             UUID uploadId = response.getUploadId();
 
             assertNotNull(uploadId);
+            assertEquals("PENDING", response.getStatus());
 
             Upload savedUpload = uploadRepository.findById(uploadId)
                     .orElseThrow();
@@ -149,7 +148,6 @@ class UploadIntegrationTest {
             assertEquals(fileName, savedUpload.getFileName());
             assertEquals("image/png", savedUpload.getContentType());
             assertEquals(fileContent.length, savedUpload.getSize());
-            assertEquals(UploadStatus.PENDING, savedUpload.getStatus());
             assertNotNull(savedUpload.getStoragePath());
 
             try (InputStream storedFile =

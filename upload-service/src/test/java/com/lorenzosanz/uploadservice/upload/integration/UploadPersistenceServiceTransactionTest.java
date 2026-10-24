@@ -14,7 +14,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.outbox.domain.OutboxEvent;
 import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.outbox.infrastructure.persistence.OutboxEventRepository;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
@@ -48,7 +47,6 @@ class UploadPersistenceServiceTransactionTest {
         Upload upload = new Upload(
                 uploadId,
                 "test-video.mp4",
-                UploadStatus.PENDING,
                 "video/mp4",
                 1024L,
                 Instant.now()

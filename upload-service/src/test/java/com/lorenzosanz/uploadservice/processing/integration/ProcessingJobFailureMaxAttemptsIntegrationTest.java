@@ -1,6 +1,4 @@
 package com.lorenzosanz.uploadservice.processing.integration;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -12,11 +10,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.upload.domain.Upload;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,7 +44,6 @@ class ProcessingJobFailureMaxAttemptsIntegrationTest {
         Upload upload = new Upload(
                 uploadId,
                 "max-attempts-test-" + uploadId + ".mp4",
-                UploadStatus.PENDING,
                 "video/mp4",
                 1024L,
                 Instant.now()
@@ -80,17 +78,18 @@ class ProcessingJobFailureMaxAttemptsIntegrationTest {
                     .findByUploadId(uploadId)
                     .orElseThrow();
 
-            Upload persistedUpload = uploadRepository.findById(uploadId)
-                    .orElseThrow();
-
             assertEquals(1, persisted.getAttempts());
-            assertEquals(ProcessingJobStatus.FAILED, persisted.getStatus());
-            assertEquals(UploadStatus.FAILED, persistedUpload.getStatus());
+            assertEquals(
+                    ProcessingJobStatus.FAILED,
+                    persisted.getStatus()
+            );
 
         } finally {
             processingJobRepository.findByUploadId(uploadId)
                     .ifPresent(current ->
-                            processingJobRepository.deleteById(current.getJobId())
+                            processingJobRepository.deleteById(
+                                    current.getJobId()
+                            )
                     );
 
             if (uploadRepository.existsById(uploadId)) {

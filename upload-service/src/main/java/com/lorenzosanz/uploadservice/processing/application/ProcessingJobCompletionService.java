@@ -6,22 +6,16 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
-import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 @Service
 public class ProcessingJobCompletionService {
 
     private final ProcessingJobRepository processingJobRepository;
-    private final UploadRepository uploadRepository;
 
     public ProcessingJobCompletionService(
-            ProcessingJobRepository processingJobRepository,
-            UploadRepository uploadRepository) {
+            ProcessingJobRepository processingJobRepository) {
         this.processingJobRepository = processingJobRepository;
-        this.uploadRepository = uploadRepository;
     }
 
     @Transactional
@@ -45,26 +39,11 @@ public class ProcessingJobCompletionService {
         Instant now = Instant.now();
 
         return processingJobRepository.findByJobIdForUpdate(jobId)
-                .map(job -> {
-                    boolean completed = job.complete(
-                            claimToken,
-                            now,
-                            outputPath
-                    );
-
-                    if (!completed) {
-                        return false;
-                    }
-
-                    Upload upload = uploadRepository.findById(job.getUploadId())
-                            .orElseThrow(() -> new IllegalStateException(
-                                    "Processing job references a missing upload"
-                            ));
-
-                    upload.markCompleted();
-
-                    return true;
-                })
+                .map(job -> job.complete(
+                        claimToken,
+                        now,
+                        outputPath
+                ))
                 .orElse(false);
     }
 }

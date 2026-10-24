@@ -15,7 +15,6 @@ import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
 import com.lorenzosanz.uploadservice.upload.domain.Upload;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
@@ -53,16 +52,13 @@ class ProcessingJobClaimServiceIntegrationTest {
 
             assertTrue(result.isPresent());
 
-            assertEquals(
-                UploadStatus.PROCESSING,
-                uploadRepository.findById(uploadId)
-                        .orElseThrow()
-                        .getStatus()
-            );
-
             ProcessingJob claimed = result.get();
 
-            assertEquals(ProcessingJobStatus.PROCESSING, claimed.getStatus());
+            assertEquals(
+                ProcessingJobStatus.PROCESSING,
+                claimed.getStatus()
+            );
+
             assertEquals(1, claimed.getAttempts());
             assertNotNull(claimed.getClaimToken());
             assertNotNull(claimed.getLeaseUntil());
@@ -157,7 +153,6 @@ class ProcessingJobClaimServiceIntegrationTest {
         Upload upload = new Upload(
                 uploadId,
                 "claim-test-" + uploadId + ".mp4",
-                UploadStatus.PENDING,
                 "video/mp4",
                 1024L,
                 Instant.now()

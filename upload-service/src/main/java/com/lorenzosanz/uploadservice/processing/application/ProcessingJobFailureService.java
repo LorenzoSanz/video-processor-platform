@@ -9,24 +9,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
-import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 @Service
 public class ProcessingJobFailureService {
 
     private final ProcessingJobRepository processingJobRepository;
-    private final UploadRepository uploadRepository;
     private final int maxAttempts;
     private final long initialBackoffSeconds;
     private final long maxBackoffSeconds;
 
     public ProcessingJobFailureService(
             ProcessingJobRepository processingJobRepository,
-            UploadRepository uploadRepository,
             @Value("${processing.max-attempts:5}") int maxAttempts,
             @Value("${processing.initial-backoff-seconds:5}")
             long initialBackoffSeconds,
@@ -42,7 +36,6 @@ public class ProcessingJobFailureService {
         }
 
         this.processingJobRepository = processingJobRepository;
-        this.uploadRepository = uploadRepository;
         this.maxAttempts = maxAttempts;
         this.initialBackoffSeconds = initialBackoffSeconds;
         this.maxBackoffSeconds = maxBackoffSeconds;
@@ -76,11 +69,12 @@ public class ProcessingJobFailureService {
         }
 
         Instant now = Instant.now();
+
         Instant retryAt = now.plus(
                 calculateRetryDelay(job.getAttempts())
         );
 
-        boolean updated = job.fail(
+        return job.fail(
                 claimToken,
                 now,
                 errorMessage,
@@ -88,22 +82,6 @@ public class ProcessingJobFailureService {
                 retryAt,
                 retryable
         );
-
-        if (!updated) {
-            return false;
-        }
-
-        Upload upload = uploadRepository.findById(job.getUploadId())
-                .orElseThrow(() -> new IllegalStateException(
-                        "Processing job references a missing upload"
-                ));
-        
-            if (job.getStatus() == ProcessingJobStatus.FAILED) {
-                upload.markFailed();
-            } else {
-                upload.markPendingForRetry();
-            }
-        return true;
     }
 
     private Duration calculateRetryDelay(int attempts) {

@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Import;
 import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
 import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
@@ -182,7 +181,6 @@ class ProcessingJobHeartbeatServiceIntegrationTest {
         Upload upload = new Upload(
                 uploadId,
                 "heartbeat-test-" + uploadId + ".mp4",
-                UploadStatus.PENDING,
                 "video/mp4",
                 1024L,
                 Instant.now()

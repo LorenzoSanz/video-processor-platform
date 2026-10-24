@@ -1,6 +1,4 @@
 package com.lorenzosanz.uploadservice.processing.integration;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -12,11 +10,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.upload.domain.UploadStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.upload.domain.Upload;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,10 +64,10 @@ class ProcessingJobFailureServiceIntegrationTest {
                     .findByUploadId(uploadId)
                     .orElseThrow();
 
-            Upload upload = uploadRepository.findById(uploadId)
-                    .orElseThrow();
-
-            assertEquals(ProcessingJobStatus.PENDING, persisted.getStatus());
+            assertEquals(
+                    ProcessingJobStatus.PENDING,
+                    persisted.getStatus()
+            );
             assertEquals(1, persisted.getAttempts());
             assertEquals(
                     "Temporary processing error",
@@ -77,13 +76,14 @@ class ProcessingJobFailureServiceIntegrationTest {
             assertNull(persisted.getClaimToken());
             assertNull(persisted.getLeaseUntil());
 
-            assertTrue(persisted.getNextAttemptAt().isAfter(beforeFailure));
+            assertTrue(
+                    persisted.getNextAttemptAt().isAfter(beforeFailure)
+            );
+
             assertTrue(
                     persisted.getNextAttemptAt()
                             .isBefore(beforeFailure.plusSeconds(15))
             );
-
-            assertEquals(UploadStatus.PENDING, upload.getStatus());
 
         } finally {
             cleanUp(uploadId);
@@ -91,7 +91,7 @@ class ProcessingJobFailureServiceIntegrationTest {
     }
 
     @Test
-    void shouldMarkJobAndUploadFailedForPermanentFailure() {
+    void shouldMarkJobFailedForPermanentFailure() {
         UUID uploadId = createJob();
 
         try {
@@ -113,10 +113,10 @@ class ProcessingJobFailureServiceIntegrationTest {
                     .findByUploadId(uploadId)
                     .orElseThrow();
 
-            Upload upload = uploadRepository.findById(uploadId)
-                    .orElseThrow();
-
-            assertEquals(ProcessingJobStatus.FAILED, persisted.getStatus());
+            assertEquals(
+                    ProcessingJobStatus.FAILED,
+                    persisted.getStatus()
+            );
             assertEquals(1, persisted.getAttempts());
             assertEquals(
                     "Unsupported or corrupted video",
@@ -124,8 +124,6 @@ class ProcessingJobFailureServiceIntegrationTest {
             );
             assertNull(persisted.getClaimToken());
             assertNull(persisted.getLeaseUntil());
-
-            assertEquals(UploadStatus.FAILED, upload.getStatus());
 
         } finally {
             cleanUp(uploadId);
@@ -167,7 +165,9 @@ class ProcessingJobFailureServiceIntegrationTest {
     }
 
     @Test
-    void shouldRejectFailureAfterLeaseExpires() throws InterruptedException {
+    void shouldRejectFailureAfterLeaseExpires()
+            throws InterruptedException {
+
         UUID uploadId = createJob();
 
         try {
@@ -220,7 +220,6 @@ class ProcessingJobFailureServiceIntegrationTest {
         Upload upload = new Upload(
                 uploadId,
                 "failure-test-" + uploadId + ".mp4",
-                UploadStatus.PENDING,
                 "video/mp4",
                 1024L,
                 Instant.now()
