@@ -49,6 +49,8 @@ class OutboxToSqsIntegrationTest {
     private static final String QUEUE_NAME = "outbox-to-sqs-integration";
 
     @Container
+    @SuppressWarnings("resource") 
+    // Spring Boot handles life cycle of the bean itself.
     static final GenericContainer<?> elasticmq =
             new GenericContainer<>(
                     DockerImageName.parse(

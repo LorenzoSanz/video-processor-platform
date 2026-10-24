@@ -32,6 +32,8 @@ class SqsOutboxMessageSenderIntegrationTest {
     private static final int SQS_PORT = 9324;
 
     @Container
+    @SuppressWarnings("resource") 
+    // Spring Boot handles life cycle of the bean itself.
     static final GenericContainer<?> elasticmq =
             new GenericContainer<>(
                     DockerImageName.parse(
