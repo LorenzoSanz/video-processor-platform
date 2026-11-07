@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 
 @Service

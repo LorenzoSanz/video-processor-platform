@@ -1,3 +1,4 @@
+
 package com.lorenzosanz.uploadservice.processing.domain;
 
 import java.time.Instant;
@@ -10,7 +11,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-
 
 @Entity
 @Table(
@@ -133,176 +133,208 @@ public class ProcessingJob {
         if (now == null) {
             throw new IllegalArgumentException("Current time is required");
         }
-    
+
         if (status == ProcessingJobStatus.PENDING) {
             return nextAttemptAt != null
                     && !nextAttemptAt.isAfter(now);
         }
-    
+
         if (status == ProcessingJobStatus.PROCESSING) {
             return leaseUntil != null
                     && !leaseUntil.isAfter(now);
         }
-    
+
         return false;
     }
-    
-    public void claim(UUID token, Instant claimedAt, Instant newLeaseUntil) {
+
+    public boolean markFailedIfAttemptsExhausted(
+            Instant now,
+            int maxAttempts) {
+
+        if (now == null) {
+            throw new IllegalArgumentException(
+                    "Current time is required"
+            );
+        }
+
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException(
+                    "Maximum attempts must be at least one"
+            );
+        }
+
+        if (attempts < maxAttempts || !isClaimableAt(now)) {
+            return false;
+        }
+
+        this.status = ProcessingJobStatus.FAILED;
+        this.lastError = "Maximum processing attempts reached";
+        this.claimToken = null;
+        this.leaseUntil = null;
+
+        return true;
+    }
+
+    public void claim(
+            UUID token,
+            Instant claimedAt,
+            Instant newLeaseUntil) {
+
         if (token == null || claimedAt == null || newLeaseUntil == null) {
             throw new IllegalArgumentException(
                     "Claim token and timestamps are required"
             );
         }
-    
+
         if (!newLeaseUntil.isAfter(claimedAt)) {
             throw new IllegalArgumentException(
                     "Lease expiration must be after claim time"
             );
         }
-    
+
         if (!isClaimableAt(claimedAt)) {
             throw new IllegalStateException(
                     "Processing job is not claimable"
             );
         }
-    
+
         this.status = ProcessingJobStatus.PROCESSING;
         this.attempts++;
         this.claimToken = token;
         this.leaseUntil = newLeaseUntil;
         this.lastHeartbeatAt = claimedAt;
-    
+
         if (this.startedAt == null) {
             this.startedAt = claimedAt;
         }
     }
 
     public boolean renewLease(
-        UUID expectedClaimToken,
-        Instant now,
-        Instant requestedLeaseUntil) {
+            UUID expectedClaimToken,
+            Instant now,
+            Instant requestedLeaseUntil) {
 
-    if (expectedClaimToken == null
-            || now == null
-            || requestedLeaseUntil == null) {
-        throw new IllegalArgumentException(
-                "Claim token and timestamps are required"
-        );
-    }
+        if (expectedClaimToken == null
+                || now == null
+                || requestedLeaseUntil == null) {
+            throw new IllegalArgumentException(
+                    "Claim token and timestamps are required"
+            );
+        }
 
-    if (!requestedLeaseUntil.isAfter(now)) {
-        throw new IllegalArgumentException(
-                "New lease expiration must be in the future"
-        );
-    }
+        if (!requestedLeaseUntil.isAfter(now)) {
+            throw new IllegalArgumentException(
+                    "New lease expiration must be in the future"
+            );
+        }
 
-    if (status != ProcessingJobStatus.PROCESSING
-            || claimToken == null
-            || !claimToken.equals(expectedClaimToken)
-            || leaseUntil == null
-            || !leaseUntil.isAfter(now)) {
-        return false;
-    }
+        if (status != ProcessingJobStatus.PROCESSING
+                || claimToken == null
+                || !claimToken.equals(expectedClaimToken)
+                || leaseUntil == null
+                || !leaseUntil.isAfter(now)) {
+            return false;
+        }
 
-    if (requestedLeaseUntil.isAfter(leaseUntil)) {
-        this.leaseUntil = requestedLeaseUntil;
-    }
+        if (requestedLeaseUntil.isAfter(leaseUntil)) {
+            this.leaseUntil = requestedLeaseUntil;
+        }
 
-    this.lastHeartbeatAt = now;
+        this.lastHeartbeatAt = now;
 
-    return true;
+        return true;
     }
 
     public boolean complete(
-        UUID expectedClaimToken,
-        Instant completedAt,
-        String outputPath) {
+            UUID expectedClaimToken,
+            Instant completedAt,
+            String outputPath) {
 
-    if (expectedClaimToken == null || completedAt == null) {
-        throw new IllegalArgumentException(
-                "Claim token and completion time are required"
-        );
-    }
+        if (expectedClaimToken == null || completedAt == null) {
+            throw new IllegalArgumentException(
+                    "Claim token and completion time are required"
+            );
+        }
 
-    if (outputPath == null || outputPath.isBlank()) {
-        throw new IllegalArgumentException(
-                "Output path is required"
-        );
-    }
+        if (outputPath == null || outputPath.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Output path is required"
+            );
+        }
 
-    if (status != ProcessingJobStatus.PROCESSING
-            || claimToken == null
-            || !claimToken.equals(expectedClaimToken)
-            || leaseUntil == null
-            || !leaseUntil.isAfter(completedAt)) {
-        return false;
-    }
+        if (status != ProcessingJobStatus.PROCESSING
+                || claimToken == null
+                || !claimToken.equals(expectedClaimToken)
+                || leaseUntil == null
+                || !leaseUntil.isAfter(completedAt)) {
+            return false;
+        }
 
-    this.status = ProcessingJobStatus.COMPLETED;
-    this.outputPath = outputPath.trim();
-    this.completedAt = completedAt;
-    this.claimToken = null;
-    this.leaseUntil = null;
-    this.lastError = null;
+        this.status = ProcessingJobStatus.COMPLETED;
+        this.outputPath = outputPath.trim();
+        this.completedAt = completedAt;
+        this.claimToken = null;
+        this.leaseUntil = null;
+        this.lastError = null;
 
-    return true;
+        return true;
     }
 
     public boolean fail(
-        UUID expectedClaimToken,
-        Instant failedAt,
-        String errorMessage,
-        int maxAttempts,
-        Instant retryAt,
-        boolean retryable) {
+            UUID expectedClaimToken,
+            Instant failedAt,
+            String errorMessage,
+            int maxAttempts,
+            Instant retryAt,
+            boolean retryable) {
 
-    if (expectedClaimToken == null
-            || failedAt == null
-            || errorMessage == null
-            || errorMessage.isBlank()
-            || retryAt == null) {
-        throw new IllegalArgumentException(
-                "Claim token, failure time, error and retry time are required"
-        );
+        if (expectedClaimToken == null
+                || failedAt == null
+                || errorMessage == null
+                || errorMessage.isBlank()
+                || retryAt == null) {
+            throw new IllegalArgumentException(
+                    "Claim token, failure time, error and retry time are required"
+            );
+        }
+
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException(
+                    "Maximum attempts must be at least one"
+            );
+        }
+
+        if (retryable && !retryAt.isAfter(failedAt)) {
+            throw new IllegalArgumentException(
+                    "Retry time must be after the failure time"
+            );
+        }
+
+        // An old claim cannot modify a new job.
+        if (status != ProcessingJobStatus.PROCESSING
+                || claimToken == null
+                || !claimToken.equals(expectedClaimToken)
+                || leaseUntil == null
+                || !leaseUntil.isAfter(failedAt)) {
+            return false;
+        }
+
+        String normalizedError = errorMessage.trim();
+
+        this.lastError = normalizedError.length() > 2000
+                ? normalizedError.substring(0, 2000)
+                : normalizedError;
+
+        this.claimToken = null;
+        this.leaseUntil = null;
+
+        if (retryable && attempts < maxAttempts) {
+            this.status = ProcessingJobStatus.PENDING;
+            this.nextAttemptAt = retryAt;
+        } else {
+            this.status = ProcessingJobStatus.FAILED;
+        }
+
+        return true;
     }
-
-    if (maxAttempts < 1) {
-        throw new IllegalArgumentException(
-                "Maximum attempts must be at least one"
-        );
-    }
-
-    if (retryable && !retryAt.isAfter(failedAt)) {
-        throw new IllegalArgumentException(
-                "Retry time must be after the failure time"
-        );
-    }
-
-    // An old claim cant modify a new job.
-    if (status != ProcessingJobStatus.PROCESSING
-            || claimToken == null
-            || !claimToken.equals(expectedClaimToken)
-            || leaseUntil == null
-            || !leaseUntil.isAfter(failedAt)) {
-        return false;
-    }
-
-    String normalizedError = errorMessage.trim();
-
-    this.lastError = normalizedError.length() > 2000
-            ? normalizedError.substring(0, 2000)
-            : normalizedError;
-
-    this.claimToken = null;
-    this.leaseUntil = null;
-
-    if (retryable && attempts < maxAttempts) {
-        this.status = ProcessingJobStatus.PENDING;
-        this.nextAttemptAt = retryAt;
-    } else {
-        this.status = ProcessingJobStatus.FAILED;
-    }
-
-    return true;
-}
 }
