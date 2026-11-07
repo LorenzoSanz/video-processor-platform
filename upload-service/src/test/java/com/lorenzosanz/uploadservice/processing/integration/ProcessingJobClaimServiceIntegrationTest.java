@@ -1,5 +1,16 @@
+
 package com.lorenzosanz.uploadservice.processing.integration;
+
+import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobCompletionService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
+import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.upload.domain.Upload;
+import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -10,18 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
-import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
-import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @Import(PostgresTestContainerConfiguration.class)
@@ -29,6 +33,12 @@ class ProcessingJobClaimServiceIntegrationTest {
 
     @Autowired
     private ProcessingJobClaimService claimService;
+
+    @Autowired
+    private ProcessingJobCompletionService completionService;
+
+    @Autowired
+    private ProcessingJobFailureService failureService;
 
     @Autowired
     private ProcessingJobRepository processingJobRepository;
@@ -44,11 +54,11 @@ class ProcessingJobClaimServiceIntegrationTest {
             Instant beforeClaim = Instant.now();
 
             ProcessingJobClaimResult.Claimed claimResult = assertInstanceOf(
-                ProcessingJobClaimResult.Claimed.class,
-                claimService.claim(
-                        uploadId,
-                        Duration.ofMinutes(2)
-                )
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
             );
 
             Instant afterClaim = Instant.now();
@@ -56,8 +66,8 @@ class ProcessingJobClaimServiceIntegrationTest {
             ProcessingJob claimed = claimResult.job();
 
             assertEquals(
-                ProcessingJobStatus.PROCESSING,
-                claimed.getStatus()
+                    ProcessingJobStatus.PROCESSING,
+                    claimed.getStatus()
             );
 
             assertEquals(1, claimed.getAttempts());
@@ -69,6 +79,7 @@ class ProcessingJobClaimServiceIntegrationTest {
             assertFalse(claimed.getLeaseUntil().isBefore(
                     beforeClaim.plus(Duration.ofMinutes(2))
             ));
+
             assertFalse(claimed.getLeaseUntil().isAfter(
                     afterClaim.plus(Duration.ofMinutes(2))
             ));
@@ -84,33 +95,40 @@ class ProcessingJobClaimServiceIntegrationTest {
 
         try {
             ProcessingJob firstClaim = assertInstanceOf(
-                ProcessingJobClaimResult.Claimed.class,
-                claimService.claim(
-                        uploadId,
-                        Duration.ofMinutes(2)
-                )
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
             ).job();
 
             UUID originalToken = firstClaim.getClaimToken();
 
             ProcessingJobClaimResult secondClaim = claimService.claim(
-                uploadId,
-                Duration.ofMinutes(2)
+                    uploadId,
+                    Duration.ofMinutes(2)
             );
 
-            assertInstanceOf(
-                ProcessingJobClaimResult.LeaseActive.class,
-                secondClaim
-            );
+            ProcessingJobClaimResult.LeaseActive leaseActive =
+                    assertInstanceOf(
+                            ProcessingJobClaimResult.LeaseActive.class,
+                            secondClaim
+                    );
 
             ProcessingJob persistedJob = processingJobRepository
                     .findByUploadId(uploadId)
                     .orElseThrow();
 
-            assertEquals(ProcessingJobStatus.PROCESSING,
-                    persistedJob.getStatus());
+            assertEquals(
+                    ProcessingJobStatus.PROCESSING,
+                    persistedJob.getStatus()
+            );
             assertEquals(1, persistedJob.getAttempts());
             assertEquals(originalToken, persistedJob.getClaimToken());
+            assertEquals(
+                    persistedJob.getLeaseUntil(),
+                    leaseActive.leaseUntil()
+            );
 
         } finally {
             cleanUp(uploadId);
@@ -119,26 +137,127 @@ class ProcessingJobClaimServiceIntegrationTest {
 
     @Test
     void shouldNotClaimJobBeforeNextAttemptTime() {
-        UUID uploadId = createJob(Instant.now().plus(Duration.ofMinutes(5)));
+        UUID uploadId = createJob(
+                Instant.now().plus(Duration.ofMinutes(5))
+        );
 
         try {
             ProcessingJobClaimResult result = claimService.claim(
-                uploadId,
-                Duration.ofMinutes(2)
+                    uploadId,
+                    Duration.ofMinutes(2)
+            );
+
+            ProcessingJobClaimResult.RetryNotDue retryNotDue =
+                    assertInstanceOf(
+                            ProcessingJobClaimResult.RetryNotDue.class,
+                            result
+                    );
+
+            ProcessingJob persistedJob = processingJobRepository
+                    .findByUploadId(uploadId)
+                    .orElseThrow();
+
+            assertEquals(
+                    ProcessingJobStatus.PENDING,
+                    persistedJob.getStatus()
+            );
+            assertEquals(0, persistedJob.getAttempts());
+            assertEquals(
+                    persistedJob.getNextAttemptAt(),
+                    retryNotDue.nextAttemptAt()
+            );
+
+        } finally {
+            cleanUp(uploadId);
+        }
+    }
+
+    @Test
+    void shouldReturnAlreadyCompletedWhenJobIsCompleted() {
+        UUID uploadId = createJob(Instant.now());
+
+        try {
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
+            ).job();
+
+            String outputPath = "processed/" + uploadId + ".mp4";
+
+            assertTrue(completionService.complete(
+                    claimed.getJobId(),
+                    claimed.getClaimToken(),
+                    outputPath
+            ));
+
+            ProcessingJobClaimResult result = claimService.claim(
+                    uploadId,
+                    Duration.ofMinutes(2)
             );
 
             assertInstanceOf(
-                ProcessingJobClaimResult.RetryNotDue.class,
-                result
+                    ProcessingJobClaimResult.AlreadyCompleted.class,
+                    result
             );
 
             ProcessingJob persistedJob = processingJobRepository
                     .findByUploadId(uploadId)
                     .orElseThrow();
 
-            assertEquals(ProcessingJobStatus.PENDING,
-                    persistedJob.getStatus());
-            assertEquals(0, persistedJob.getAttempts());
+            assertEquals(
+                    ProcessingJobStatus.COMPLETED,
+                    persistedJob.getStatus()
+            );
+            assertEquals(outputPath, persistedJob.getOutputPath());
+            assertEquals(1, persistedJob.getAttempts());
+
+        } finally {
+            cleanUp(uploadId);
+        }
+    }
+
+    @Test
+    void shouldReturnTerminallyFailedWhenJobHasFailedPermanently() {
+        UUID uploadId = createJob(Instant.now());
+
+        try {
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
+            ).job();
+
+            assertTrue(failureService.fail(
+                    claimed.getJobId(),
+                    claimed.getClaimToken(),
+                    "Permanent processing failure",
+                    false
+            ));
+
+            ProcessingJobClaimResult result = claimService.claim(
+                    uploadId,
+                    Duration.ofMinutes(2)
+            );
+
+            assertInstanceOf(
+                    ProcessingJobClaimResult.TerminallyFailed.class,
+                    result
+            );
+
+            ProcessingJob persistedJob = processingJobRepository
+                    .findByUploadId(uploadId)
+                    .orElseThrow();
+
+            assertEquals(
+                    ProcessingJobStatus.FAILED,
+                    persistedJob.getStatus()
+            );
+            assertEquals(1, persistedJob.getAttempts());
 
         } finally {
             cleanUp(uploadId);
@@ -151,7 +270,7 @@ class ProcessingJobClaimServiceIntegrationTest {
                 UUID.randomUUID(),
                 Duration.ofMinutes(2)
         );
-    
+
         assertInstanceOf(
                 ProcessingJobClaimResult.NotFound.class,
                 result
