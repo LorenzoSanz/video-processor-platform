@@ -4,6 +4,7 @@ package com.lorenzosanz.uploadservice.processing.application;
 import java.time.Duration;
 import java.util.UUID;
 
+import com.lorenzosanz.uploadservice.processing.application.port.ProcessingCancellationToken;
 import com.lorenzosanz.uploadservice.processing.application.port.ProcessingCommand;
 import com.lorenzosanz.uploadservice.processing.application.port.ProcessingJobProcessor;
 import com.lorenzosanz.uploadservice.processing.application.port.ProcessingResult;
@@ -89,7 +90,13 @@ public class ProcessingMessageHandler {
                 claimToken
         );
 
-        ProcessingResult processingResult = processor.process(command);
+        ProcessingCancellationToken cancellationToken =
+                new ProcessingCancellationToken();
+
+        ProcessingResult processingResult = processor.process(
+                command,
+                cancellationToken
+        );
 
         if (processingResult instanceof ProcessingResult.Succeeded succeeded) {
 

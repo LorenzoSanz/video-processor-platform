@@ -1,6 +1,7 @@
 
 package com.lorenzosanz.uploadservice.processing.application;
 
+import com.lorenzosanz.uploadservice.processing.application.port.ProcessingCancellationToken;
 import com.lorenzosanz.uploadservice.processing.application.port.ProcessingCommand;
 import com.lorenzosanz.uploadservice.processing.application.port.ProcessingJobProcessor;
 import com.lorenzosanz.uploadservice.processing.application.port.ProcessingResult;
@@ -16,10 +17,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -76,6 +82,7 @@ class ProcessingMessageHandlerTest {
     @Test
     void shouldProcessAndAcknowledgeSuccessfully() {
         ProcessingJob job = claimedJob();
+        ProcessingCommand command = expectedCommand();
 
         when(claimService.claim(UPLOAD_ID, LEASE_DURATION))
                 .thenReturn(
@@ -83,7 +90,8 @@ class ProcessingMessageHandlerTest {
                 );
 
         when(processor.process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(command),
+                any(ProcessingCancellationToken.class)
         )).thenReturn(
                 new ProcessingResult.Succeeded(OUTPUT_PATH)
         );
@@ -108,8 +116,18 @@ class ProcessingMessageHandlerTest {
 
         verify(claimService).claim(UPLOAD_ID, LEASE_DURATION);
 
+        ArgumentCaptor<ProcessingCancellationToken> tokenCaptor =
+                ArgumentCaptor.forClass(
+                        ProcessingCancellationToken.class
+                );
+
         verify(processor).process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(command),
+                tokenCaptor.capture()
+        );
+
+        assertFalse(
+                tokenCaptor.getValue().isCancellationRequested()
         );
 
         verify(completionService).complete(
@@ -131,7 +149,8 @@ class ProcessingMessageHandlerTest {
                 );
 
         when(processor.process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(expectedCommand()),
+                any(ProcessingCancellationToken.class)
         )).thenReturn(
                 new ProcessingResult.Succeeded(OUTPUT_PATH)
         );
@@ -167,7 +186,8 @@ class ProcessingMessageHandlerTest {
                 );
 
         when(processor.process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(expectedCommand()),
+                any(ProcessingCancellationToken.class)
         )).thenReturn(
                 new ProcessingResult.Failed(
                         "Temporary processing error",
@@ -218,7 +238,8 @@ class ProcessingMessageHandlerTest {
                 );
 
         when(processor.process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(expectedCommand()),
+                any(ProcessingCancellationToken.class)
         )).thenReturn(
                 new ProcessingResult.Failed(
                         "Unsupported video format",
@@ -270,7 +291,8 @@ class ProcessingMessageHandlerTest {
                 );
 
         when(processor.process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(expectedCommand()),
+                any(ProcessingCancellationToken.class)
         )).thenReturn(
                 new ProcessingResult.Failed(
                         "Repeated processing failure",
@@ -313,7 +335,8 @@ class ProcessingMessageHandlerTest {
                 );
 
         when(processor.process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(expectedCommand()),
+                any(ProcessingCancellationToken.class)
         )).thenReturn(
                 new ProcessingResult.Failed(
                         "Temporary error",
@@ -353,7 +376,8 @@ class ProcessingMessageHandlerTest {
                 );
 
         when(processor.process(
-                new ProcessingCommand(JOB_ID, UPLOAD_ID, CLAIM_TOKEN)
+                eq(expectedCommand()),
+                any(ProcessingCancellationToken.class)
         )).thenReturn(
                 new ProcessingResult.Failed(
                         "Temporary error",
@@ -514,6 +538,14 @@ class ProcessingMessageHandlerTest {
                 processor,
                 completionService,
                 failureService
+        );
+    }
+
+    private ProcessingCommand expectedCommand() {
+        return new ProcessingCommand(
+                JOB_ID,
+                UPLOAD_ID,
+                CLAIM_TOKEN
         );
     }
 
