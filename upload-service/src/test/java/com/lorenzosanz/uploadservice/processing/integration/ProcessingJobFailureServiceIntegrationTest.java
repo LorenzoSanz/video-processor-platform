@@ -83,10 +83,16 @@ class ProcessingJobFailureServiceIntegrationTest {
             assertNull(persisted.getClaimToken());
             assertNull(persisted.getLeaseUntil());
 
-            assertEquals(
-                    result.nextAttemptAt(),
-                    persisted.getNextAttemptAt()
-            );
+            Duration timestampDifference = Duration.between(
+                result.nextAttemptAt(),
+                persisted.getNextAttemptAt()
+        ).abs();
+        
+        assertTrue(
+                timestampDifference.compareTo(Duration.ofNanos(1_000)) <= 0,
+                "Persisted retry timestamp differs beyond PostgreSQL precision: "
+                        + timestampDifference
+        );
 
             assertTrue(
                     result.nextAttemptAt().isAfter(beforeFailure)
