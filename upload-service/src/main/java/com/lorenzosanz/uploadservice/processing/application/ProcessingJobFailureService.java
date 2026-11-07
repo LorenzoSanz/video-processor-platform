@@ -1,3 +1,4 @@
+
 package com.lorenzosanz.uploadservice.processing.application;
 
 import java.time.Duration;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 
 @Service
@@ -42,7 +44,7 @@ public class ProcessingJobFailureService {
     }
 
     @Transactional
-    public boolean fail(
+    public ProcessingJobFailureResult fail(
             UUID jobId,
             UUID claimToken,
             String errorMessage,
@@ -65,7 +67,7 @@ public class ProcessingJobFailureService {
                 .orElse(null);
 
         if (job == null) {
-            return false;
+            return new ProcessingJobFailureResult.NotFound();
         }
 
         Instant now = Instant.now();
@@ -74,7 +76,7 @@ public class ProcessingJobFailureService {
                 calculateRetryDelay(job.getAttempts())
         );
 
-        return job.fail(
+        boolean accepted = job.fail(
                 claimToken,
                 now,
                 errorMessage,
@@ -82,6 +84,29 @@ public class ProcessingJobFailureService {
                 retryAt,
                 retryable
         );
+
+        if (!accepted) {
+            return new ProcessingJobFailureResult.Rejected();
+        }
+
+        return switch (job.getStatus()) {
+            case PENDING ->
+                    new ProcessingJobFailureResult.RetryScheduled(
+                            job.getNextAttemptAt()
+                    );
+
+            case FAILED ->
+                    new ProcessingJobFailureResult.TerminalFailure(
+                            retryable
+                                    ? ProcessingJobFailureResult.TerminalFailureReason.MAX_ATTEMPTS_REACHED
+                                    : ProcessingJobFailureResult.TerminalFailureReason.NON_RETRYABLE_FAILURE
+                    );
+
+            default -> throw new IllegalStateException(
+                    "Unexpected processing job status after failure: "
+                            + job.getStatus()
+            );
+        };
     }
 
     private Duration calculateRetryDelay(int attempts) {

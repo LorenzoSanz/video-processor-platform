@@ -1,15 +1,4 @@
-
 package com.lorenzosanz.uploadservice.processing.integration;
-
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
-import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,8 +9,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
+import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureResult;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
+import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.upload.domain.Upload;
+import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,14 +56,16 @@ class ProcessingJobFailureServiceIntegrationTest {
 
             Instant beforeFailure = Instant.now();
 
-            boolean accepted = failureService.fail(
-                    claimed.getJobId(),
-                    claimed.getClaimToken(),
-                    "Temporary processing error",
-                    true
-            );
-
-            assertTrue(accepted);
+            ProcessingJobFailureResult.RetryScheduled result =
+                    assertInstanceOf(
+                            ProcessingJobFailureResult.RetryScheduled.class,
+                            failureService.fail(
+                                    claimed.getJobId(),
+                                    claimed.getClaimToken(),
+                                    "Temporary processing error",
+                                    true
+                            )
+                    );
 
             ProcessingJob persisted = processingJobRepository
                     .findByUploadId(uploadId)
@@ -82,12 +83,17 @@ class ProcessingJobFailureServiceIntegrationTest {
             assertNull(persisted.getClaimToken());
             assertNull(persisted.getLeaseUntil());
 
-            assertTrue(
-                    persisted.getNextAttemptAt().isAfter(beforeFailure)
+            assertEquals(
+                    result.nextAttemptAt(),
+                    persisted.getNextAttemptAt()
             );
 
             assertTrue(
-                    persisted.getNextAttemptAt()
+                    result.nextAttemptAt().isAfter(beforeFailure)
+            );
+
+            assertTrue(
+                    result.nextAttemptAt()
                             .isBefore(beforeFailure.plusSeconds(15))
             );
 
@@ -109,14 +115,21 @@ class ProcessingJobFailureServiceIntegrationTest {
                     )
             ).job();
 
-            boolean accepted = failureService.fail(
-                    claimed.getJobId(),
-                    claimed.getClaimToken(),
-                    "Unsupported or corrupted video",
-                    false
-            );
+            ProcessingJobFailureResult.TerminalFailure result =
+                    assertInstanceOf(
+                            ProcessingJobFailureResult.TerminalFailure.class,
+                            failureService.fail(
+                                    claimed.getJobId(),
+                                    claimed.getClaimToken(),
+                                    "Unsupported or corrupted video",
+                                    false
+                            )
+                    );
 
-            assertTrue(accepted);
+            assertEquals(
+                    ProcessingJobFailureResult.TerminalFailureReason.NON_RETRYABLE_FAILURE,
+                    result.reason()
+            );
 
             ProcessingJob persisted = processingJobRepository
                     .findByUploadId(uploadId)
@@ -152,14 +165,17 @@ class ProcessingJobFailureServiceIntegrationTest {
                     )
             ).job();
 
-            boolean accepted = failureService.fail(
+            ProcessingJobFailureResult result = failureService.fail(
                     claimed.getJobId(),
                     UUID.randomUUID(),
                     "Temporary error",
                     true
             );
 
-            assertFalse(accepted);
+            assertInstanceOf(
+                    ProcessingJobFailureResult.Rejected.class,
+                    result
+            );
 
             ProcessingJob persisted = processingJobRepository
                     .findByUploadId(uploadId)
@@ -193,14 +209,17 @@ class ProcessingJobFailureServiceIntegrationTest {
 
             Thread.sleep(500);
 
-            boolean accepted = failureService.fail(
+            ProcessingJobFailureResult result = failureService.fail(
                     claimed.getJobId(),
                     claimed.getClaimToken(),
                     "Late failure report",
                     true
             );
 
-            assertFalse(accepted);
+            assertInstanceOf(
+                    ProcessingJobFailureResult.Rejected.class,
+                    result
+            );
 
             ProcessingJob persisted = processingJobRepository
                     .findByUploadId(uploadId)
@@ -218,15 +237,18 @@ class ProcessingJobFailureServiceIntegrationTest {
     }
 
     @Test
-    void shouldReturnFalseWhenJobDoesNotExist() {
-        boolean accepted = failureService.fail(
+    void shouldReturnNotFoundWhenJobDoesNotExist() {
+        ProcessingJobFailureResult result = failureService.fail(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Unknown job",
                 true
         );
 
-        assertFalse(accepted);
+        assertInstanceOf(
+                ProcessingJobFailureResult.NotFound.class,
+                result
+        );
     }
 
     private UUID createJob() {

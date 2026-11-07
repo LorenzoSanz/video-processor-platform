@@ -4,6 +4,7 @@ package com.lorenzosanz.uploadservice.processing.integration;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobCompletionService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureResult;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobHeartbeatService;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
@@ -209,12 +210,18 @@ class ProcessingJobClaimConcurrencyIntegrationTest {
                     "processed/" + uploadId + ".mp4"
             ));
 
-            assertFalse(failureService.fail(
-                    jobId,
-                    oldToken,
-                    "Late failure from previous worker",
-                    true
-            ));
+            ProcessingJobFailureResult failureResult =
+                    failureService.fail(
+                            jobId,
+                            oldToken,
+                            "Late failure from previous worker",
+                            true
+                    );
+
+            assertInstanceOf(
+                    ProcessingJobFailureResult.Rejected.class,
+                    failureResult
+            );
 
             ProcessingJob persisted = processingJobRepository
                     .findByUploadId(uploadId)

@@ -5,6 +5,7 @@ import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobCompletionService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureResult;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
@@ -123,6 +124,7 @@ class ProcessingJobClaimServiceIntegrationTest {
                     ProcessingJobStatus.PROCESSING,
                     persistedJob.getStatus()
             );
+
             assertEquals(1, persistedJob.getAttempts());
             assertEquals(originalToken, persistedJob.getClaimToken());
             assertEquals(
@@ -161,6 +163,7 @@ class ProcessingJobClaimServiceIntegrationTest {
                     ProcessingJobStatus.PENDING,
                     persistedJob.getStatus()
             );
+
             assertEquals(0, persistedJob.getAttempts());
             assertEquals(
                     persistedJob.getNextAttemptAt(),
@@ -211,6 +214,7 @@ class ProcessingJobClaimServiceIntegrationTest {
                     ProcessingJobStatus.COMPLETED,
                     persistedJob.getStatus()
             );
+
             assertEquals(outputPath, persistedJob.getOutputPath());
             assertEquals(1, persistedJob.getAttempts());
 
@@ -232,12 +236,21 @@ class ProcessingJobClaimServiceIntegrationTest {
                     )
             ).job();
 
-            assertTrue(failureService.fail(
-                    claimed.getJobId(),
-                    claimed.getClaimToken(),
-                    "Permanent processing failure",
-                    false
-            ));
+            ProcessingJobFailureResult.TerminalFailure failureResult =
+                    assertInstanceOf(
+                            ProcessingJobFailureResult.TerminalFailure.class,
+                            failureService.fail(
+                                    claimed.getJobId(),
+                                    claimed.getClaimToken(),
+                                    "Permanent processing failure",
+                                    false
+                            )
+                    );
+
+            assertEquals(
+                    ProcessingJobFailureResult.TerminalFailureReason.NON_RETRYABLE_FAILURE,
+                    failureResult.reason()
+            );
 
             ProcessingJobClaimResult result = claimService.claim(
                     uploadId,
@@ -257,6 +270,7 @@ class ProcessingJobClaimServiceIntegrationTest {
                     ProcessingJobStatus.FAILED,
                     persistedJob.getStatus()
             );
+
             assertEquals(1, persistedJob.getAttempts());
 
         } finally {

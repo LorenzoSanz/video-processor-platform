@@ -1,15 +1,4 @@
-
 package com.lorenzosanz.uploadservice.processing.integration;
-
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
-import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,9 +9,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
+import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureResult;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
+import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.upload.domain.Upload;
+import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(properties = "processing.max-attempts=1")
 @Import(PostgresTestContainerConfiguration.class)
@@ -71,14 +70,21 @@ class ProcessingJobFailureMaxAttemptsIntegrationTest {
                     )
             ).job();
 
-            boolean accepted = failureService.fail(
-                    claimed.getJobId(),
-                    claimed.getClaimToken(),
-                    "Temporary error, but no attempts remain",
-                    true
-            );
+            ProcessingJobFailureResult.TerminalFailure result =
+                    assertInstanceOf(
+                            ProcessingJobFailureResult.TerminalFailure.class,
+                            failureService.fail(
+                                    claimed.getJobId(),
+                                    claimed.getClaimToken(),
+                                    "Temporary error, but no attempts remain",
+                                    true
+                            )
+                    );
 
-            assertTrue(accepted);
+            assertEquals(
+                    ProcessingJobFailureResult.TerminalFailureReason.MAX_ATTEMPTS_REACHED,
+                    result.reason()
+            );
 
             ProcessingJob persisted = processingJobRepository
                     .findByUploadId(uploadId)
