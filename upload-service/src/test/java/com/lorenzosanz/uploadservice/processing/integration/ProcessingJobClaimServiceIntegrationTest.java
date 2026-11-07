@@ -3,7 +3,6 @@ import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimSe
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -17,11 +16,12 @@ import com.lorenzosanz.uploadservice.upload.domain.Upload;
 import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
 import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
 import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 @SpringBootTest
 @Import(PostgresTestContainerConfiguration.class)
@@ -43,16 +43,17 @@ class ProcessingJobClaimServiceIntegrationTest {
         try {
             Instant beforeClaim = Instant.now();
 
-            Optional<ProcessingJob> result = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
+            ProcessingJobClaimResult.Claimed claimResult = assertInstanceOf(
+                ProcessingJobClaimResult.Claimed.class,
+                claimService.claim(
+                        uploadId,
+                        Duration.ofMinutes(2)
+                )
             );
 
             Instant afterClaim = Instant.now();
 
-            assertTrue(result.isPresent());
-
-            ProcessingJob claimed = result.get();
+            ProcessingJob claimed = claimResult.job();
 
             assertEquals(
                 ProcessingJobStatus.PROCESSING,
@@ -82,21 +83,25 @@ class ProcessingJobClaimServiceIntegrationTest {
         UUID uploadId = createJob(Instant.now());
 
         try {
-            Optional<ProcessingJob> firstClaim = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
+            ProcessingJob firstClaim = assertInstanceOf(
+                ProcessingJobClaimResult.Claimed.class,
+                claimService.claim(
+                        uploadId,
+                        Duration.ofMinutes(2)
+                )
+            ).job();
+
+            UUID originalToken = firstClaim.getClaimToken();
+
+            ProcessingJobClaimResult secondClaim = claimService.claim(
+                uploadId,
+                Duration.ofMinutes(2)
             );
 
-            assertTrue(firstClaim.isPresent());
-
-            UUID originalToken = firstClaim.get().getClaimToken();
-
-            Optional<ProcessingJob> secondClaim = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
+            assertInstanceOf(
+                ProcessingJobClaimResult.LeaseActive.class,
+                secondClaim
             );
-
-            assertTrue(secondClaim.isEmpty());
 
             ProcessingJob persistedJob = processingJobRepository
                     .findByUploadId(uploadId)
@@ -117,12 +122,15 @@ class ProcessingJobClaimServiceIntegrationTest {
         UUID uploadId = createJob(Instant.now().plus(Duration.ofMinutes(5)));
 
         try {
-            Optional<ProcessingJob> result = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
+            ProcessingJobClaimResult result = claimService.claim(
+                uploadId,
+                Duration.ofMinutes(2)
             );
 
-            assertTrue(result.isEmpty());
+            assertInstanceOf(
+                ProcessingJobClaimResult.RetryNotDue.class,
+                result
+            );
 
             ProcessingJob persistedJob = processingJobRepository
                     .findByUploadId(uploadId)
@@ -138,13 +146,16 @@ class ProcessingJobClaimServiceIntegrationTest {
     }
 
     @Test
-    void shouldReturnEmptyWhenJobDoesNotExist() {
-        Optional<ProcessingJob> result = claimService.claim(
+    void shouldReturnNotFoundWhenJobDoesNotExist() {
+        ProcessingJobClaimResult result = claimService.claim(
                 UUID.randomUUID(),
                 Duration.ofMinutes(2)
         );
-
-        assertTrue(result.isEmpty());
+    
+        assertInstanceOf(
+                ProcessingJobClaimResult.NotFound.class,
+                result
+        );
     }
 
     private UUID createJob(Instant jobCreatedAt) {

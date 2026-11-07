@@ -1,4 +1,15 @@
+
 package com.lorenzosanz.uploadservice.processing.integration;
+
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
+import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
+import com.lorenzosanz.uploadservice.upload.domain.Upload;
+import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -9,17 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
-import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
-import com.lorenzosanz.uploadservice.processing.application.ProcessingJobFailureService;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJobStatus;
-import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,10 +47,13 @@ class ProcessingJobFailureServiceIntegrationTest {
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
-            ).orElseThrow();
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
+            ).job();
 
             Instant beforeFailure = Instant.now();
 
@@ -95,10 +101,13 @@ class ProcessingJobFailureServiceIntegrationTest {
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
-            ).orElseThrow();
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
+            ).job();
 
             boolean accepted = failureService.fail(
                     claimed.getJobId(),
@@ -135,10 +144,13 @@ class ProcessingJobFailureServiceIntegrationTest {
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
-            ).orElseThrow();
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
+            ).job();
 
             boolean accepted = failureService.fail(
                     claimed.getJobId(),
@@ -171,10 +183,13 @@ class ProcessingJobFailureServiceIntegrationTest {
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMillis(200)
-            ).orElseThrow();
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMillis(200)
+                    )
+            ).job();
 
             Thread.sleep(500);
 

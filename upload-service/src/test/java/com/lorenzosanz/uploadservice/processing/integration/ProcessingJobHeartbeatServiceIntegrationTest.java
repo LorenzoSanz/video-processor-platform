@@ -1,6 +1,14 @@
+
 package com.lorenzosanz.uploadservice.processing.integration;
+
+import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimResult;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobClaimService;
 import com.lorenzosanz.uploadservice.processing.application.ProcessingJobHeartbeatService;
+import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
+import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
+import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
+import com.lorenzosanz.uploadservice.upload.domain.Upload;
+import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -11,14 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
-import com.lorenzosanz.uploadservice.support.PostgresTestContainerConfiguration;
-import com.lorenzosanz.uploadservice.processing.domain.ProcessingJob;
-import com.lorenzosanz.uploadservice.upload.domain.Upload;
-import com.lorenzosanz.uploadservice.processing.infrastructure.persistence.ProcessingJobRepository;
-import com.lorenzosanz.uploadservice.upload.infrastructure.persistence.UploadRepository;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,10 +46,13 @@ class ProcessingJobHeartbeatServiceIntegrationTest {
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(1)
-            ).orElseThrow();
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(1)
+                    )
+            ).job();
 
             UUID jobId = claimed.getJobId();
             UUID claimToken = claimed.getClaimToken();
@@ -92,10 +98,13 @@ class ProcessingJobHeartbeatServiceIntegrationTest {
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMinutes(2)
-            ).orElseThrow();
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMinutes(2)
+                    )
+            ).job();
 
             ProcessingJob before = processingJobRepository
                     .findByUploadId(uploadId)
@@ -127,14 +136,19 @@ class ProcessingJobHeartbeatServiceIntegrationTest {
     }
 
     @Test
-    void shouldRejectHeartbeatAfterLeaseExpires() throws InterruptedException {
+    void shouldRejectHeartbeatAfterLeaseExpires()
+            throws InterruptedException {
+
         UUID uploadId = createJob();
 
         try {
-            ProcessingJob claimed = claimService.claim(
-                    uploadId,
-                    Duration.ofMillis(100)
-            ).orElseThrow();
+            ProcessingJob claimed = assertInstanceOf(
+                    ProcessingJobClaimResult.Claimed.class,
+                    claimService.claim(
+                            uploadId,
+                            Duration.ofMillis(100)
+                    )
+            ).job();
 
             // Esperamos a que venza el lease que hemos creado para el test.
             Thread.sleep(250);
@@ -155,6 +169,7 @@ class ProcessingJobHeartbeatServiceIntegrationTest {
                     claimed.getClaimToken(),
                     persisted.getClaimToken()
             );
+
             assertTrue(
                     !persisted.getLeaseUntil().isAfter(Instant.now())
             );

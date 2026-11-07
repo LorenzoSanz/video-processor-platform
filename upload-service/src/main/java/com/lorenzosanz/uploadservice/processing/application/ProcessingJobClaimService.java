@@ -22,7 +22,7 @@ public class ProcessingJobClaimService {
     }
 
     @Transactional
-    public Optional<ProcessingJob> claim(
+    public ProcessingJobClaimResult claim(
             UUID uploadId,
             Duration leaseDuration) {
 
@@ -42,14 +42,30 @@ public class ProcessingJobClaimService {
                 processingJobRepository.findByUploadIdForUpdate(uploadId);
 
         if (candidate.isEmpty()) {
-            return Optional.empty();
+            return new ProcessingJobClaimResult.NotFound();
         }
 
         Instant now = Instant.now();
         ProcessingJob job = candidate.get();
 
         if (!job.isClaimableAt(now)) {
-            return Optional.empty();
+            return switch (job.getStatus()) {
+                case PENDING ->
+                        new ProcessingJobClaimResult.RetryNotDue(
+                                job.getNextAttemptAt()
+                        );
+        
+                case PROCESSING ->
+                        new ProcessingJobClaimResult.LeaseActive(
+                                job.getLeaseUntil()
+                        );
+        
+                case COMPLETED ->
+                        new ProcessingJobClaimResult.AlreadyCompleted();
+        
+                case FAILED ->
+                        new ProcessingJobClaimResult.TerminallyFailed();
+            };
         }
 
         UUID claimToken = UUID.randomUUID();
@@ -59,6 +75,6 @@ public class ProcessingJobClaimService {
 
         processingJobRepository.flush();
 
-        return Optional.of(job);
+        return new ProcessingJobClaimResult.Claimed(job);
     }
 }
